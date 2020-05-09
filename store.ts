@@ -1,4 +1,5 @@
-import {ActionMapToMethodMap, Effect, handleActionMap, Reducer} from "./core";
+import {ActionMapToMethodMap, Effect, Reducer} from "./core";
+import {handleActionMap} from "./handlers";
 
 
 /**

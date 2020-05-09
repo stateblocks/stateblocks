@@ -1,6 +1,6 @@
 import {Counter, createMockCounterContext} from "./Counter";
-import {actionsWithContext} from "../core";
 import {Store} from "../store";
+import {actionsWithContext} from "../actions";
 
 
 test("simple counter with effect", async () => {

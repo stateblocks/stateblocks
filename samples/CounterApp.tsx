@@ -1,8 +1,8 @@
 import * as React from "react";
-import {handle, handleActionMap} from "../core";
 import * as ReactDOM from "react-dom";
 import {Store} from "../store";
 import {App, MultipleCountersState} from "./MultipleCounters";
+import {handle, handleActionMap} from "../handlers";
 
 
 
