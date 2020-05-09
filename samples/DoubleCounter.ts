@@ -2,8 +2,9 @@
  * Composition of two Counters.
  */
 
-import {actionsWithContextPart, Executor, scopeActions} from "../core";
+import {Executor} from "../core";
 import {Counter, CounterState, createMockCounterContext} from "./Counter";
+import {actionsWithContextPart, scopeActions} from "../actions";
 
 
 type Counters = {

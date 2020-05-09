@@ -1,6 +1,6 @@
 import {createTwoCounters} from "./DoubleCounter";
-import {handleActionMap} from "../core";
 import {Store, StoreWithActions} from "../store";
+import {handleActionMap} from "../handlers";
 
 
 type CounterComponent = {

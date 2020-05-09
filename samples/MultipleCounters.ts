@@ -1,13 +1,12 @@
 import {
-    actionsWithContextActions, actionsWithListener,
     Executor,
-    executorWithActionsContext,
-    executorWithScope, handleActionMap,
     Reducer, ReducerHandler,
-    reducerWithActionsContext, scopeActions,
-    scopeReducer
 } from "../core";
 import {Counter, CounterContext, CounterState} from "./Counter";
+import {actionsWithContextActions, actionsWithListener, scopeActions} from "../actions";
+import {reducerWithActionsContext, scopeReducer} from "../reducers";
+import {executorWithActionsContext, executorWithScope} from "../executors";
+import {handleActionMap} from "../handlers";
 
 
 export type MultipleCountersState = {

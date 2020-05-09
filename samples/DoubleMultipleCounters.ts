@@ -1,5 +1,6 @@
-import {Executor, scopeActions} from "../core";
+import {Executor} from "../core";
 import {App, MultipleCountersState} from "./MultipleCounters";
+import {scopeActions} from "../actions";
 
 
 export type DoubleState = {
