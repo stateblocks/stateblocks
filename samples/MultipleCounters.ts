@@ -1,11 +1,12 @@
 import {
+    ActionMapToMethodMap,
     Executor,
     Reducer, ReducerHandler,
 } from "../core";
 import {Counter, CounterContext, CounterState} from "./Counter";
 import {actionsWithContextActions, actionsWithListener, scopeActions} from "../actions";
 import {reducerWithActionsContext, scopeReducer} from "../reducers";
-import {executorWithActionsContext, executorWithScope} from "../executors";
+import {_executorWithActionsContext, _executorWithScope} from "../executors";
 import {handleActionMap} from "../handlers";
 
 
@@ -19,7 +20,7 @@ export type MultipleCountersState = {
 
 
 function executorWithCounterContext(executor: Executor<MultipleCountersState>, idx: number): Executor<MultipleCountersState, CounterContext> {
-    return executorWithActionsContext(executor, {
+    return _executorWithActionsContext(executor, {
         ...App.actions,
         onReset(count: number) {
             return App.actions.onCounterReset(idx, count);
@@ -28,8 +29,8 @@ function executorWithCounterContext(executor: Executor<MultipleCountersState>, i
 }
 
 function counterExecutor(executor: Executor<MultipleCountersState>, idx: number): Executor<CounterState, CounterContext> {
-    const executor1 = executorWithScope(executorWithCounterContext(executor, idx), "counters");
-    return executorWithScope(executor1, idx);
+    const executor1 = _executorWithScope(executorWithCounterContext(executor, idx), "counters");
+    return _executorWithScope(executor1, idx);
 }
 
 function getTotal(counters: CounterState[]) {
@@ -42,11 +43,17 @@ function getTotal(counters: CounterState[]) {
 
 
 function scopeCounterReducer(idx: number, reducer: Reducer<CounterState, CounterContext>): Reducer<MultipleCountersState> {
-    return reducerWithActionsContext({
+    const newVar:Reducer<MultipleCountersState, CounterContext> = scopeReducer<MultipleCountersState>("counters")(scopeReducer<CounterState[]>(idx)(reducer));
+    const actions = {
         onReset(count: number) {
             return App.actions.onCounterReset(idx, count);
         }
-    })(scopeReducer<MultipleCountersState>("counters")(scopeReducer<CounterState[]>(idx)(reducer)));
+    };
+
+    let test:CounterContext = null;
+    let mm:ActionMapToMethodMap<typeof actions> = test;
+
+    return reducerWithActionsContext(actions)(newVar);
 }
 
 

@@ -1,27 +1,217 @@
 import {SampleStorage, sleep} from "./samples/utils";
 import {
+    ActionMap,
+    ActionMapToCtx, ActionMapWithCtx,
+    ActionMapWithState,
     Effect,
     Executor,
+    IndexType,
+    Reducer,
+    ReducerCreator,
 } from "./core";
 import {Store} from "./store";
 import {
     actionsWithActionsContextPart,
     actionsWithContext,
     actionsWithContextBuilderPart,
-    actionsWithContextPart, chainActions, scopeActions, scopeActionsWithCtxBuilder
+    actionsWithContextPart,
+    chainActions,
+    scopeActions,
+    scopeActionsWithCtxBuilder
 } from "./actions";
 import {handleActionMap} from "./handlers";
-import {memoizeN} from "./memo";
+
+
+test("simple actions with context", async () => {
+
+    type Context = {
+        bar(): any,
+        baz(): any,
+    }
+
+    let bar = jest.fn();
+    let baz = jest.fn();
+
+
+    let actions = {
+        foo: () => (state: number, executor: Executor<number, Context>): number => {
+            executor(((state1, handler, ctx) => {
+                ctx.bar()
+            }))
+            return state + 1;
+        }
+    }
+
+    let actions1 = actionsWithContext({bar, baz}, actions)
+
+    let store: Store<number>;
+    store = new Store(0);
+    await store.update(actions1.foo());
+    expect(store.state).toBe(1);
+    expect(bar.mock.calls.length).toBe(1);
+
+
+    let actions2: ActionMapWithCtx<typeof actions, { baz: () => void }> = actionsWithContextPart({bar}, actions)
+    let actions3: ActionMapWithCtx<typeof actions, void> = actionsWithContextPart({baz}, actions2)
+
+    store = new Store(0);
+    await store.update(actions3.foo());
+    expect(store.state).toBe(1);
+    expect(bar.mock.calls.length).toBe(2);
+
+})
+
+
+test("complex actions with context", async () => {
+
+    type State = number;
+
+    type Context = {
+        foo(): any,
+        bar(): any,
+        baz(): any
+    }
+
+
+    const actions = {
+        test: () => (state: State, executor: Executor<State, Context>): State => {
+            executor((state, handler, ctx) => {
+                ctx.foo();
+                ctx.bar();
+                ctx.baz();
+            });
+            return state + 1;
+        },
+
+        subActions: {
+            test2: () => (state: State, executor: Executor<State, Context>): State => {
+                executor((state, handler, ctx) => {
+                    ctx.foo();
+                    ctx.bar();
+                    ctx.baz();
+                });
+                return state + 1;
+            },
+        },
+
+        subActionsFn: (shift: number) => ({
+            test2: () => (state: State, executor: Executor<State, Context>): State => {
+                executor((state, handler, ctx) => {
+                    ctx.foo();
+                    ctx.bar();
+                    ctx.baz();
+                });
+                return state + shift;
+            }
+        }),
+
+    };
+
+
+    let foo = jest.fn();
+    let bar = jest.fn();
+    let baz = jest.fn();
+
+    let barCtx = {bar};
+
+    let fullCtx = {
+        foo,
+        bar,
+        baz,
+    }
+
+    const fooActionCtx = {
+        foo: () => (state: State, executor: Executor<State, Context>) => {
+            foo();
+            return state;
+        }
+    };
+
+    const fullActionCtx = {
+        foo: () => (state: State, executor: Executor<State, Context>) => {
+            foo();
+            return state;
+        },
+        bar: () => (state: State, executor: Executor<State, Context>) => {
+            bar();
+            return state;
+        },
+        baz: () => (state: State, executor: Executor<State, Context>) => {
+            baz();
+            return state;
+        }
+    };
+
+    const bazCtxBuilder = (ctxParent: typeof barCtx) => ({
+        baz: () => {
+            ctxParent.bar();
+            baz();
+        }
+    });
+
+    let mockExecutor: any = () => {
+
+    }
+
+    // Typing test : Provide partial context
+    actionsWithContextPart(barCtx, actions).test()(1, mockExecutor as Executor<State, { foo: () => void, baz: () => void }>)
+
+    // Typing test : Provide full context
+    actionsWithContextPart(fullCtx, actions).test()(1, mockExecutor as Executor<State>)
+
+    // Typing test : Provide partial context with builder
+    actionsWithContextBuilderPart((ctxParent: Pick<Context, "foo" | "bar">) => ({
+        baz,
+    }), actions).test()(1, mockExecutor as Executor<State, { foo: () => void, bar: () => void }>)
+
+    // Typing test : Provide partial context with builder
+    actionsWithContextBuilderPart(() => ({
+        foo,
+        bar,
+    }), actions).test()(1, mockExecutor as Executor<State, { baz: () => void }>)
+
+    // Typing test : Provide full context with builder
+    actionsWithContextBuilderPart(() => ({
+        foo,
+        bar,
+        baz,
+    }), actions).test()(1, mockExecutor as Executor<State>)
+
+    // Typing test : Provide partial context with actions
+    actionsWithActionsContextPart(fooActionCtx, actions).test()(1, mockExecutor as Executor<State, { bar: () => void, baz: () => void }>)
+
+    // Typing test : Provide full context with actions
+    actionsWithActionsContextPart(fullActionCtx, actions).test()(1, mockExecutor as Executor<State>)
+
+
+    const actions4: ActionMapWithCtx<typeof actions, { bar: () => void, baz: () => void }> = actionsWithActionsContextPart(fooActionCtx, actions);
+    const actions5: ActionMapWithCtx<typeof actions, { bar: () => void }> = actionsWithContextBuilderPart(bazCtxBuilder, actions4);
+    const actions6: ActionMapWithCtx<typeof actions, void> = actionsWithContextPart(barCtx, actions5);
+
+    let store = new Store(0);
+    await store.update(actions6.test());
+    expect(store.state).toBe(1);
+    expect(foo.mock.calls.length).toBe(1);
+    expect(bar.mock.calls.length).toBe(2);
+    expect(baz.mock.calls.length).toBe(1);
+    await store.update(actions6.subActions.test2());
+    expect(store.state).toBe(2);
+    await store.update(actions6.subActionsFn(2).test2());
+    expect(store.state).toBe(4);
+
+})
 
 
 test("add context to scoped action", async () => {
 
-    type ContextType = { ctxActions: (arg: string) => void };
+    type ContextType = {
+        foo: (arg: string) => void,
+    };
 
     let subActions = {
         setValue: (count: number) => (state: number, executor: Executor<number, ContextType>): number => {
             executor((state, handler, ctx) => {
-                ctx.ctxActions("run effect");
+                ctx.foo("run effect");
             });
             return state + count;
         }
@@ -29,14 +219,14 @@ test("add context to scoped action", async () => {
 
     let actions = {scope: scopeActions<{ scope: number }>("scope")(subActions)};
 
-
     let mockCallback = jest.fn(arg => {
         console.log(arg)
     });
 
     let counterContext = {
-        ctxActions: (arg: string) => mockCallback(arg)
+        foo: mockCallback
     };
+
 
     var actionsWithContext1 = actionsWithContext(counterContext, actions);
 
@@ -66,7 +256,7 @@ let testActions = {
             return state + arg;
         },
 
-        paf: (arg: number) => (state: number, executor: Executor<number>) => {
+        bar: (arg: number) => (state: number, executor: Executor<number>) => {
             return state + arg;
         },
     },
@@ -75,7 +265,7 @@ let testActions = {
         foo: (arg: number) => (state: number, executor: Executor<number>) => {
             return state + arg + shift;
         },
-        paf: (arg: number) => (state: number, executor: Executor<number>) => {
+        bar: (arg: number) => (state: number, executor: Executor<number>) => {
             return state + arg + shift;
         },
     }),
@@ -114,7 +304,7 @@ test("chain actions", () => {
                 return state + arg;
             },
 
-            boum: (arg: number) => (state: number, executor: Executor<number>) => {
+            baz: (arg: number) => (state: number, executor: Executor<number>) => {
                 return state + arg;
             },
         },
@@ -142,16 +332,16 @@ test("chain actions", () => {
     state = chainActions(actions1, actions2).subActionsMap.foo(1)(0, executor);
     expect(state).toBe(2);
 
-    state = chainActions(actions1, actions2).subActionsMap.paf(1)(0, executor);
+    state = chainActions(actions1, actions2).subActionsMap.bar(1)(0, executor);
     expect(state).toBe(1);
 
-    state = chainActions(actions1, actions2).subActionsMap.boum(1)(0, executor);
+    state = chainActions(actions1, actions2).subActionsMap.baz(1)(0, executor);
     expect(state).toBe(1);
 
     state = chainActions(actions1, actions2).subActionsFunction(1).foo(1)(0, executor);
     expect(state).toBe(4);
 
-    state = chainActions(actions1, actions2).subActionsFunction(1).paf(1)(0, executor);
+    state = chainActions(actions1, actions2).subActionsFunction(1).bar(1)(0, executor);
     expect(state).toBe(2);
 
     state = chainActions(actions1, actions2).test6(1).foo(1)(0, executor);
@@ -248,12 +438,12 @@ test("scope actions with array state", () => {
 
 test("use context builder in scoped action", async () => {
 
-    type ContextType = { ctxActions: (arg: string) => void };
+    type ContextType = { foo: (arg: string) => void };
 
     let subActions = {
         setValue: (count: number) => (state: number, executor: Executor<number, ContextType>): number => {
             executor((state, handler, ctx) => {
-                ctx.ctxActions("run effect");
+                ctx.foo("run effect");
             });
             return state + count;
         }
@@ -264,7 +454,7 @@ test("use context builder in scoped action", async () => {
     });
 
     var actionsWithContext1 = scopeActionsWithCtxBuilder<number[], void, ContextType>((key, state, handler, ctx: void) => ({
-        ctxActions: (arg: string) => {
+        foo: (arg: string) => {
             mockCallback(arg + " from " + key)
         }
     }))(subActions);
@@ -310,11 +500,11 @@ test("use handler with scope actions", async () => {
 
 test("scope actions with action in effect", async () => {
     type State = { scope: number };
-    let newVar = {
+    let subActions = {
         actionWithEffect: () => (state: number, executor: Executor<number>) => {
             executor(async (state, handler) => {
                 await sleep(10);
-                return handler(newVar.increment())
+                return handler(subActions.increment())
             });
             return state + 1;
         },
@@ -324,7 +514,7 @@ test("scope actions with action in effect", async () => {
         },
 
     };
-    let actions = scopeActions<State>("scope")(newVar);
+    let actions = scopeActions<State>("scope")(subActions);
 
     let initialState = {scope: 0};
 
@@ -340,90 +530,6 @@ test("scope actions with action in effect", async () => {
 
 });
 
-
-test("provide context parts", async () => {
-
-    type State = number;
-
-    type Context = {
-        bim(): any,
-        bam(): any,
-        pouf(): any
-    }
-
-
-    const actions = {
-        test: () => (state: State, executor: Executor<State, Context>): State => {
-            executor((state, handler, ctx) => {
-                ctx.bim();
-                ctx.bam();
-                ctx.pouf();
-            });
-            return state + 1;
-        },
-
-        subActions: {
-            test2: () => (state: State, executor: Executor<State, Context>): State => {
-                executor((state, handler, ctx) => {
-                    ctx.bim();
-                    ctx.bam();
-                    ctx.pouf();
-                });
-                return state + 1;
-            },
-        },
-
-        subActionsFn: (shift: number) => ({
-            test2: () => (state: State, executor: Executor<State, Context>): State => {
-                executor((state, handler, ctx) => {
-                    ctx.bim();
-                    ctx.bam();
-                    ctx.pouf();
-                });
-                return state + shift;
-            }
-        }),
-
-    };
-
-
-    let bam = jest.fn(() => {
-    });
-    let pouf = jest.fn(() => {
-    });
-    let bim = jest.fn(() => {
-    });
-
-    let ctxPart1 = {
-        bam: bam,
-    };
-
-    const ctxActions = {
-        bim: () => (state: State, executor: Executor<State, Context>) => {
-            bim();
-            return state;
-        }
-    };
-
-    const actionsWithContextPart1 = actionsWithContextPart(ctxPart1, actionsWithContextBuilderPart((ctxParent: typeof ctxPart1) => ({
-        pouf: () => {
-            ctxParent.bam();
-            pouf();
-        }
-    }), actionsWithActionsContextPart(ctxActions, actions)));
-
-    let store = new Store(0);
-    await store.update(actionsWithContextPart1.test());
-    expect(store.state).toBe(1);
-    expect(bim.mock.calls.length).toBe(1);
-    expect(bam.mock.calls.length).toBe(2);
-    expect(pouf.mock.calls.length).toBe(1);
-    await store.update(actionsWithContextPart1.subActions.test2());
-    expect(store.state).toBe(2);
-    await store.update(actionsWithContextPart1.subActionsFn(2).test2());
-    expect(store.state).toBe(4);
-
-});
 
 
 //TODO : choose and fix

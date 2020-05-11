@@ -1,43 +1,28 @@
 import {
+    ActionMapToCtx,
     ActionMapToMethodMap,
-    ContextToActionMap,
     Effect,
     Executor,
-    FunctionsContext,
     IndexType,
     Reducer,
     ReducerHandler,
-    StatePart,
-    updateState,
-    WithoutOrVoid
+    StatePart, UnionOrVoid,
+    updateState, Without,
 } from "./core";
-import {executorWithActionsContext, executorWithContext} from "./executors";
-import {assertDefined, assertFunction, assertObject} from "./asserts";
-import {handleActionMap, handlerWithContext, scopeHandler} from "./handlers";
+import {_executorWithContext, mapExecutorEffectContext, mapExecutorEffectState} from "./executors";
+import {assertFunction} from "./asserts";
+import {handleActionMap, handlerWithContext} from "./handlers";
+import {mapEffectState, wrapEffectWithActionsMap, wrapEffectWithPartialActionMap} from "./effects";
 
 //TODO curry
-export function reducerWithWrappedEffect<S, C0, C, A>(effectWrapper: (effect: Effect<S, C>) => Effect<S, C0>, reducer: Reducer<S, C>) {
+export function _reducerWithWrappedEffect<S, C0, C>(effectWrapper: (effect: Effect<S, C>) => Effect<S, C0>, reducer: Reducer<S, C>) {
     assertFunction(reducer);
-    return (state: S, executor: Executor<S, C0>) => {
-        const contextExecutor = (effect: Effect<S, C>) => {
-            executor(effectWrapper(effect));
-        };
-        return reducer(state, contextExecutor)
-    };
+    return mapReducerExecutorContext(mapExecutorEffectContext(effectWrapper))(reducer)
 }
 
 export function reducerWithActionsContextPart<M>(ctxActions: M)
-    : <S, C1>(reducer: Reducer<S, C1>) => Reducer<S, WithoutOrVoid<C1, ActionMapToMethodMap<M>>> {
-    let effectWrapper = <S, C1>(effect: Effect<S, C1>) => (state: S, handler: ReducerHandler<S>, ctx: WithoutOrVoid<C1, ActionMapToMethodMap<M>>) => {
-        let ctxFromActions = handleActionMap(handler, ctxActions);
-        let newCtx = {
-            ...ctxFromActions, ...ctx
-        };
-        // @ts-ignore //TODO
-        return effect(state, handlerWithContext(handler, newCtx), newCtx)
-    };
-    // @ts-ignore
-    return <S, C1>(reducer: Reducer<S, C1>) => reducerWithWrappedEffect(effectWrapper, reducer);
+    : <S, C1>(reducer: Reducer<S, C1>) => Reducer<S, UnionOrVoid<ActionMapToCtx<M>, Without<C1, ActionMapToMethodMap<M>>>> {
+    return mapReducerExecutorContext(mapExecutorEffectContext(wrapEffectWithPartialActionMap(ctxActions)));
 }
 
 /**
@@ -47,26 +32,31 @@ export function reducerWithActionsContextPart<M>(ctxActions: M)
  */
 //TODO : ne pas exporter. Utiliser scopeActions qui prend en charge les reducers directement
 export function scopeReducer<S>(key: IndexType<S>) {
-    return <C = void>(reducer: Reducer<StatePart<S, typeof key>, C>): Reducer<S, C> => {
-        return (state: S, effects: Executor<S, C>) => {
-            assertDefined(state);
-            assertObject(state);
-            let scopeExecutor: Executor<StatePart<S, typeof key>, C> = (effect: Effect<StatePart<S, typeof key>, C>) => {
-                effects(async (state: S, handler, input: C) => {
-                    assertObject(state);
-                    assertDefined((state as any)[key]);
-                    await effect((state as any)[key], scopeHandler(key, handler), input)
-                })
-            };
-            let subState = reducer((state as any)[key], scopeExecutor);
-            return updateState(state, key, subState);
-        }
-    }
+    let stateMapper = (state:S) => (state as any)[key] as StatePart<S, typeof key>
+    let stateUpdater = (parentState:S, subState:StatePart<S, typeof key>) => updateState(parentState, key, subState);
+
+    return mapReducerState<S, StatePart<S, typeof key>>(stateMapper, stateUpdater)
+
+    // return <C = void>(reducer: Reducer<StatePart<S, typeof key>, C>): Reducer<S, C> => {
+    //     return (state: S, effects: Executor<S, C>) => {
+    //         assertDefined(state);
+    //         assertObject(state);
+    //         let scopeExecutor: Executor<StatePart<S, typeof key>, C> = (effect: Effect<StatePart<S, typeof key>, C>) => {
+    //             effects(async (state: S, handler, input: C) => {
+    //                 assertObject(state);
+    //                 assertDefined((state as any)[key]);
+    //                 await effect((state as any)[key], scopeHandler(key, handler), input)
+    //             })
+    //         };
+    //         let subState = reducer((state as any)[key], scopeExecutor);
+    //         return updateState(state, key, subState);
+    //     }
+    // }
 }
 
 export function reducerWithContextPart<M>(ctx1: M)
-    : <S, C1>(reducer: Reducer<S, C1>) => Reducer<S, WithoutOrVoid<C1, ActionMapToMethodMap<M>>> {
-    let effectWrapper = <S, C1>(effect: Effect<S, C1>) => (state: S, handler: ReducerHandler<S>, ctx: WithoutOrVoid<C1, ActionMapToMethodMap<M>>) => {
+    : <S, C1>(reducer: Reducer<S, C1>) => Reducer<S, Without<C1, ActionMapToMethodMap<M>>> {
+    let effectWrapper = <S, C1>(effect: Effect<S, C1>) => (state: S, handler: ReducerHandler<S>, ctx: Without<C1, ActionMapToMethodMap<M>>) => {
         let newCtx = {
             ...ctx1, ...ctx
         };
@@ -75,11 +65,11 @@ export function reducerWithContextPart<M>(ctx1: M)
     };
 
     // @ts-ignore
-    return <S, C1>(reducer: Reducer<S, C1>) => reducerWithWrappedEffect(effectWrapper, reducer);
+    return <S, C1>(reducer: Reducer<S, C1>) => _reducerWithWrappedEffect(effectWrapper, reducer);
 }
 
 export function reducerWithContextBuilderPart<M, C0, C>(ctxBuilder: (ctxIn: C0) => C)
-    : <S>(reducer: Reducer<S, C>) => Reducer<S, WithoutOrVoid<C0, C>> {
+    : <S>(reducer: Reducer<S, C>) => Reducer<S, Without<C0, C>> {
     let effectWrapper = <S>(effect: Effect<S, C>) => (state: S, handler: ReducerHandler<S, C0>, ctx: C0) => {
         let newCtx = {
             ...ctxBuilder(ctx), ...ctx
@@ -88,7 +78,7 @@ export function reducerWithContextBuilderPart<M, C0, C>(ctxBuilder: (ctxIn: C0) 
         return effect(state, handlerWithContext(handler, newCtx), newCtx)
     };
     // @ts-ignore
-    return <S>(reducer: Reducer<S, C>) => reducerWithWrappedEffect(effectWrapper, reducer);
+    return <S>(reducer: Reducer<S, C>) => _reducerWithWrappedEffect(effectWrapper, reducer);
 }
 
 export function reducerWithContextBuilder<C, C0>(ctxBuilder: (ctxIn: C0) => C): <S>(reducer: Reducer<S, C>) => Reducer<S, C0> {
@@ -96,23 +86,38 @@ export function reducerWithContextBuilder<C, C0>(ctxBuilder: (ctxIn: C0) => C): 
         const newCtx = ctxBuilder(ctx);
         return effect(state, handlerWithContext(handler, newCtx), newCtx);
     };
-    return <S>(reducer: Reducer<S, C>) => reducerWithWrappedEffect(effectWrapper, reducer);
+    return <S>(reducer: Reducer<S, C>) => _reducerWithWrappedEffect(effectWrapper, reducer);
 }
 
-export function reducerWithContext<C>(ctx: C) {
-    return <S>(reducer: Reducer<S, C>) => {
-        return (state: S, executor: Executor<S>) => {
-            return reducer(state, executorWithContext(executor, ctx))
+
+export function _reducerWithContext<C>(ctx: C) {
+    return mapReducerExecutorContext(_executorWithContext(ctx))
+}
+
+export function reducerWithActionsContext<M>(actions: M): <S>(reducer: Reducer<S, ActionMapToMethodMap<M>>) => Reducer<S> {
+    return mapReducerExecutorContext(mapExecutorEffectContext(wrapEffectWithActionsMap<any, M>(actions)))
+    // return <S>(reducer: Reducer<S, C>) => {
+    //     return (state: S, executor: Executor<S, any>) => {
+    //         @ts-ignore TODO
+            // const executorWithActionsContext1: Executor<S, C> = _executorWithActionsContext(executor, actions);
+            // return reducer(state, executorWithActionsContext1);
+        // }
+    // }
+}
+
+export function mapReducerExecutorContext<S, C1, C2>(execMapper:(executor:Executor<S, C1>) => Executor<S, C2>){
+    return (reducer:Reducer<S, C2>) => {
+        return (state: S, executor:Executor<S, C1>) => {
+            return reducer(state, execMapper(executor))
         }
-    };
+    }
 }
 
-export function reducerWithActionsContext<S, C extends FunctionsContext>(actions: ContextToActionMap<C>) {
-    return <S>(reducer: Reducer<S, C>) => {
-        return (state: S, executor: Executor<S, any>) => {
-            // @ts-ignore TODO
-            const executorWithActionsContext1: Executor<S, C> = executorWithActionsContext(executor, actions);
-            return reducer(state, executorWithActionsContext1);
+export function mapReducerState<S0, S1>(stateMapper:(state:S0) => S1, stateUpdater:(parentState:S0, state:S1) => S0){
+    return <C>(reducer:Reducer<S1, C>):Reducer<S0, C> => {
+        return (state: S0, executor:Executor<S0, C>) => {
+            const newState:S1 = reducer(stateMapper(state), mapExecutorEffectState(mapEffectState(stateMapper, stateUpdater))(executor));
+            return stateUpdater(state, newState)
         }
     }
 }

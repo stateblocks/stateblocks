@@ -15,38 +15,62 @@ import {
     ReducerCreatorWithoutContext,
     ReducerHandler,
     StatePart,
-    WithoutOrVoid
+    UnionOrVoid,
+    Without,
 } from "./core";
 import {
+    _reducerWithContext,
+    _reducerWithWrappedEffect,
     reducerWithActionsContext,
     reducerWithActionsContextPart,
-    reducerWithContext,
     reducerWithContextBuilder,
     reducerWithContextBuilderPart,
     reducerWithContextPart,
-    reducerWithWrappedEffect,
     scopeReducer
 } from "./reducers";
 import {assertFunction, assertObject} from "./asserts";
 import {handleActionMap, handlerWithContext} from "./handlers";
-import {executorWithActionsContext} from "./executors";
+import {_executorWithActionsContext, mapExecutorEffect} from "./executors";
 import {mapValues as lodashMapValues} from "lodash-es";
+import {mapEffectContext} from "./effects";
 
-function actionWithWrappedEffect<S, C, C0>(effectWrapper: (effect: Effect<S, C>) => Effect<S, C0>) {
-    return function <A extends any[]>(reducerCreator: ReducerCreator<A, S, C>): ReducerCreator<A, S, C0> {
-        return (...args: A) => {
-            return reducerWithWrappedEffect(effectWrapper, reducerCreator(...args));
-        }
-    };
+
+class ActionsModifier<S, C, M extends ActionMap<S, C>> {
+
+    actionsMap: M
+
+    constructor(actionsMap: M) {
+        this.actionsMap = actionsMap;
+    }
+
+    withContext(ctx: ActionMapToCtx<M>) {
+        return actionsWithContext(ctx, this.actionsMap)
+    }
+
+    withContextPart<C1>(ctx: C1) {
+        return actionsWithContextPart(ctx, this.actionsMap)
+    }
 }
 
-export function actionWithContextBuilder<C, C0>(ctxBuilder: (ctxIn: C0) => C) {
-    const effectWrapper = <S>(effect: Effect<S, C>): Effect<S, C0> => (state: S, handler, ctx) => {
-        const newCtx = ctxBuilder(ctx);
-        return effect(state, handlerWithContext(handler, newCtx), newCtx);
-    };
-    return actionWithWrappedEffect(effectWrapper);
+type ActionMap2<S, C> = { [key: string]: ReducerCreator<any[], S, C> }
+
+type InferActionMap<M> = M extends ActionMap<infer S, infer C> ? ActionMap<S, C> : never
+
+export function useActions<S, C, M extends ActionMap2<S, C>>(actionMap: M) {
+    return new ActionsModifier(actionMap)
 }
+
+function test() {
+    type Context = {
+        a: string,
+        b: number,
+    }
+    const increment = () => (state: number, exec: Executor<number, Context>) => state + 1;
+    const actionMap = {increment: increment};
+    useActions(actionMap).withContext({a: "test", b: 42})
+    useActions(actionMap).withContextPart({a: 42})
+}
+
 
 export function mapActionsValues<T, U, A>(fn: (arg: T) => U, actions: A): { [key in keyof A]: U } {
     // console.warn("use mapActionsReducers instead of mapActionsValues");
@@ -74,12 +98,6 @@ function mapActionsReducers<T, U, A>(reducerTransformer: (reducer: T) => U, acti
     }
 }
 
-//TODO : on ne vérifie pas que les actions prennent le bon contexte
-export function actionsWithContext<S, M extends ActionMap<S, C>, C>(ctx: C, actions: M)
-    : ActionMapWithCtx<M, void> {
-    // @ts-ignore
-    return mapActionsReducers(reducerWithContext(ctx), actions)
-}
 
 export function actionsWithListener<M, C, S>(listener: Reducer<S, C>, actions: M)
     : M {
@@ -106,6 +124,81 @@ export function actionsWithListener<M, C, S>(listener: Reducer<S, C>, actions: M
     }, actions)
 }
 
+
+function actionsWithFull<CP, M>(ctxOrFunction: CP, actions: M):
+    CP extends (ctxIn: infer C0) => infer C ?
+        ActionMapWithCtx<M, UnionOrVoid<C0, Without<ActionMapToCtx<M>, C>>>
+        :
+        ActionMapWithCtx<M, Without<ActionMapToCtx<M>, CP>> {
+    return null
+}
+
+function testFullContext() {
+
+    type Context = {
+        a: string,
+        b: number,
+    }
+
+    const actions = {
+        increment: () => (state: number, executor: Executor<number, Context>) => state + 1
+    }
+
+    /**
+     * Provide context part builder with input arg
+     */
+    let newActions1 = actionsWithFull((arg: { input: string }) => ({
+        a: "test",
+    }), actions)
+
+    let action1: Reducer<number, { input: string, b: number }> = newActions1.increment()
+
+    /**
+     * Provide full context builder without arg
+     */
+    let newActions2 = actionsWithFull(() => ({
+        a: "test",
+        b: 1,
+    }), actions)
+
+
+    let action2: Reducer<number> = newActions2.increment()
+
+    /**
+     * Provide full context builder with arg
+     */
+    let newActions3 = actionsWithFull((arg: string) => ({
+        a: "test",
+        b: 1,
+    }), actions)
+    let action3: Reducer<number, string> = newActions3.increment()
+
+    /**
+     * Provide full context object
+     */
+    let newActions4 = actionsWithFull({
+        a: "test",
+        b: 1,
+    }, actions)
+    let action4: Reducer<number> = newActions4.increment()
+
+    /**
+     * Provide part context object
+     */
+    let newActions5 = actionsWithFull({
+        a: "test",
+    }, actions)
+    let action5: Reducer<number, { b: number }> = newActions5.increment()
+}
+
+
+//TODO : on ne vérifie pas que les actions prennent le bon contexte
+export function actionsWithContext<M>(ctx: ActionMapToCtx<M>, actions: M)
+    : ActionMapWithCtx<M, void> {
+    // @ts-ignore
+    return mapActionsReducers(_reducerWithContext(ctx), actions)
+}
+
 export function actionsWithContextBuilder<M, C, C0>(ctxBuilder: (ctxIn: C0) => C, actions: M)
     : ActionMapWithCtx<M, C0> {
     // @ts-ignore
@@ -118,84 +211,26 @@ export function actionsWithContextActions<M, C extends FunctionsContext>(ctxActi
     return mapActionsReducers(reducerWithActionsContext(ctxAction), actions)
 }
 
-export function actionWithContextPart<C>(ctx1: C)
-    : <A extends any[], S, C1>(action: ReducerCreator<A, S, C1>) => ReducerCreator<A, S, WithoutOrVoid<C1, C>> {
-    let effectWrapper = <S, C1>(effect: Effect<S, C1>) => (state: S, handler: ReducerHandler<S, WithoutOrVoid<C1, C>>, ctx: WithoutOrVoid<C1, C>) => {
-        let newCtx = {
-            ...ctx1, ...ctx
-        };
-        // @ts-ignore //TODO
-        return effect(state, handlerWithContext(handler, newCtx), newCtx)
-    };
-    return actionWithWrappedEffect(effectWrapper);
-}
-
-export function actionWithActionsContextPart<M>(ctxActions: M)
-    : <A extends any[], S, C1>(action: ReducerCreator<A, S, C1>) => ReducerCreator<A, S, WithoutOrVoid<C1, ActionMapToMethodMap<M>>> {
-    let effectWrapper = <S, C1>(effect: Effect<S, C1>) => (state: S, handler: ReducerHandler<S>, ctx: WithoutOrVoid<C1, ActionMapToMethodMap<M>>) => {
-        let ctxFromActions = handleActionMap(handler, ctxActions);
-        let newCtx = {
-            ...ctxFromActions, ...ctx
-        };
-        // @ts-ignore //TODO
-        return effect(state, handlerWithContext(handler, newCtx), newCtx)
-    };
-    // @ts-ignore
-    return actionWithWrappedEffect(effectWrapper);
-}
 
 export function actionsWithContextPart<M, C>(ctx: C, actions: M)
-    : ActionMapWithCtx<M, WithoutOrVoid<ActionMapToCtx<M>, C>> {
+    : ActionMapWithCtx<M, Without<ActionMapToCtx<M>, C>> {
     //TODO : si on implémente tout le context, le reducer n'est pas un Reducer<S, void>
     // @ts-ignore
     return mapActionsReducers(reducerWithContextPart(ctx), actions)
 }
 
 export function actionsWithContextBuilderPart<M, C, C0>(ctxBuilder: (ctxParent: C0) => C, actions: M)
-    : ActionMapWithCtx<M, ActionMapToCtx<M> extends void ? C0 : C0 & Omit<ActionMapToCtx<M>, keyof C>> {
+    : ActionMapWithCtx<M, ActionMapToCtx<M> extends void ? C0 : UnionOrVoid<C0, Without<ActionMapToCtx<M>, C>>> {
     //TODO : si on implémente tout le context, le reducer n'est pas un Reducer<S, void>
     // @ts-ignore
     return mapActionsReducers(reducerWithContextBuilderPart(ctxBuilder), actions)
 }
 
 export function actionsWithActionsContextPart<CM, M>(ctxActions: CM, actions: M)
-    : ActionMapWithCtx<M, WithoutOrVoid<ActionMapToCtx<M>, ActionMapToMethodMap<CM>>> {
+    : ActionMapWithCtx<M, Without<ActionMapToCtx<M>, ActionMapToMethodMap<CM>>> {
     // @ts-ignore
     return mapActionsReducers(reducerWithActionsContextPart(ctxActions), actions);
 }
-
-export function scopeAction<S>(key: IndexType<S>)
-    : <A extends any[], C>(action: ReducerCreator<A, StatePart<S, IndexType<S>>, C>) => ReducerCreator<A, S, C> {
-    return <A extends any[], C>(action: ReducerCreator<A, StatePart<S, IndexType<S>>, C>) => (...args: A) => {
-        const reducerOrActionsMap = action(...args);
-        if (typeof reducerOrActionsMap === "function") {
-            //TODO : marche pas si reducerOrActionsMap est une fonction qui renvoie une action map
-            return scopeReducer(key)(reducerOrActionsMap);
-        } else {
-            return scopeActions(key)(reducerOrActionsMap)
-        }
-    }
-}
-
-export function actionWithContext<C>(ctx: C) {
-    return function <A extends any[], S>(reducerCreator: ReducerCreator<A, S, C>): ReducerCreator<A, S> {
-        let reducerWithContext1 = reducerWithContext(ctx);
-        return (...args: A) => {
-            let reducer = reducerCreator(...args);
-            return reducerWithContext1(reducer);
-        }
-    };
-}
-
-export function actionWithActionsContext<C extends FunctionsContext>(actions: ContextToActionMap<C>)
-    : <A extends any[], S, C extends FunctionsContext>(reducer: ReducerCreator<A, S, C>) => ReducerCreatorWithoutContext<ReducerCreator<A, S, C>> {
-    return <A extends any[], S, C extends FunctionsContext>(reducer: ReducerCreator<A, S, C>) => (...args: A) => (state: S, executor: Executor<S, any>) => {
-        // @ts-ignore TODO
-        const executorWithActionsContext1: Executor<S, C> = executorWithActionsContext(executor, actions);
-        return reducer(...args)(state, executorWithActionsContext1);
-    }
-}
-
 
 
 //TODO : permettre de fournir un context builder qui renvoie le contexte correspondant au scope
@@ -236,7 +271,7 @@ function scopeActionsWithEffectWrapper<S, C1, C2>(effectWrapper: (key: IndexType
         return (key: IndexType<S>) => {
             let reducerTransformer = (r: Reducer<StatePart<S, typeof key>, C2>) => {
                 let reducer: Reducer<S, C2> = scopeReducer<S>(key)(r);
-                return reducerWithWrappedEffect(effectWrapper(key), reducer) as Reducer<S, C1>;
+                return _reducerWithWrappedEffect(effectWrapper(key), reducer) as Reducer<S, C1>;
             };
             // @ts-ignore
             return mapActionsReducers(reducerTransformer, actions) as ActionMapWithCtx<ActionMapWithState<M, S>, C1>;
@@ -265,6 +300,7 @@ type ActionUnion<A, B> =
                 never
             :
             never
+
 export type ActionMapUnion<A, B> =
     { [key in keyof A & keyof B]: ActionUnion<A[key], B[key]> }
     & Omit<A, keyof B>

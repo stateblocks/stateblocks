@@ -1,8 +1,11 @@
+
 export type Reducer<S, C = void> = (state: S, executor?: Executor<S, C>) => S
 
 /**
  * An executor is a function taking an effect to execute. The effect may require a part of the executor context,
- * or no context at all
+ * or no context at all.
+ * TODO : executor should accept effects that require less context than C, but should provide all context to effects without explicit typing.
+ *
  */
 export type Executor<S, C = void> = (effect: Effect<S, C>) => void;
 
@@ -31,12 +34,14 @@ type WithoutContext<R> = R extends ReducerCreator<infer A, infer S, infer C> ? R
 
 export type ReducerMapWithoutContext<R> = { [P in keyof R]: WithoutContext<R[P]> }
 
-export type ActionMap<S, C> = { [key: string]: (ReducerCreator<any[], S, C> | ((...args: any[]) => ActionMap<S, C>)) | ActionMap<S, C> }
+// Type inference doesn't work well with type referencing itself so we use another type ActionMap2
+export type ActionMap<S, C> = { [key: string]: (ReducerCreator<any[], S, C> | ((...args: any[]) => ActionMap2<S, C>)) | ActionMap2<S, C> }
+type ActionMap2<S, C> = { [key: string]: (ReducerCreator<any[], S, C> | ((...args: any[]) => ActionMap<S, C>)) | ActionMap<S, C> }
 
 export type ActionToMethod<A> =
     A extends (...args: any) => any ?
         ReturnType<A> extends (...args: any) => any ?
-            (...args: Parameters<A>) => Promise<void>
+            (...args: Parameters<A>) => void
             : (...args: Parameters<A>) => ActionMapToMethodMap<ReturnType<A>>
         : A extends Object ?
         ActionMapToMethodMap<A>
@@ -45,6 +50,8 @@ export type ActionToMethod<A> =
 export type ActionMapToMethodMap<M> = { [K in keyof M]: ActionToMethod<M[K]> }
 
 export type ActionMapToCtx<M> = M extends ActionMap<infer S, infer C> ? C : never
+
+export type ActionMapToState<M> = M extends ActionMap<infer S, infer C> ? S : never
 
 type ActionWithState<T, S> = T extends ReducerCreator<infer A, infer S1, infer C> ?
     ReducerCreator<A, S, C>
@@ -82,13 +89,14 @@ type AsActionMapItem<T> = T extends ReducerCreator<infer A, infer S, infer C> ?
 type AsActionMap<M> = { [K in keyof M]: AsActionMapItem<M[K]> }
 
 
-export type WithoutOrVoid<C1, C> =
-    C1 extends void ? void :
-        C1 extends never ?
-            void
-            : keyof Omit<C1, keyof C> extends never ?
-            void :
-            Omit<C1, keyof C>
+
+export type Without<C1, C> = Exclude<keyof C1, keyof C> extends never ? void : Omit<C1, keyof C>
+
+export type UnionOrVoid<A, B> = B extends void ?
+    A :
+    A extends void ?
+        B :
+        A & B
 
 
 export function updateState<S, K extends IndexType<S>>(state: S, key: K, subState: StatePart<S, K>) {
@@ -108,7 +116,4 @@ export function updateState<S, K extends IndexType<S>>(state: S, key: K, subStat
         }
     }
 }
-
-
-
 

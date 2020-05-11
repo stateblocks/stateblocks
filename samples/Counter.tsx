@@ -17,11 +17,11 @@ export const Counter = {
 
     actions: {
 
-        increment: () => (state: CounterState) => {
+        increment: () => (state: CounterState, executor: Executor<CounterState, CounterContext>) => {
             return state + 1;
         },
 
-        decrement: () => (state: CounterState) => {
+        decrement: () => (state: CounterState, executor: Executor<CounterState, CounterContext>) => {
             return Math.max(state - 1, 0);
         },
 
@@ -69,7 +69,7 @@ export const Counter = {
          * @param timeout
          */
         incrementAndLater: (timeout: number) => (state: CounterState, executor: Executor<CounterState, CounterContext>) => {
-            state = Counter.actions.increment()(state);
+            state = Counter.actions.increment()(state, executor);
             return Counter.actions.incrementLater(timeout)(state, executor)
         }
 
