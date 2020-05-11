@@ -1,15 +1,9 @@
-import {scopeReducer} from "./reducers";
-import {
-    ActionMapToMethodMap,
-    Executor,
-    IndexType,
-    Reducer,
-    ReducerCreator,
-    ReducerHandler,
-    StatePart
-} from "./core";
+import {mapReducerExecutorContext, mapReducerState, scopeReducer} from "./reducers";
+import {ActionMapToMethodMap, Executor, IndexType, Reducer, ReducerCreator, ReducerHandler, StatePart} from "./core";
 import {memoize2, memoizeN} from "./memo";
 import {mapActionsValues} from "./actions";
+import {mapExecutorEffectContext} from "./executors";
+import {mapEffectContext} from "./effects";
 
 export function scopeHandler<S, T, K extends IndexType<S>, C>(key: K, handler: ReducerHandler<S, C>): ReducerHandler<StatePart<S, K>, C> {
     return (action: Reducer<StatePart<S, K>, C>) => {
@@ -54,16 +48,29 @@ export function handle<S, C>(handler: ReducerHandler<S, C>): <A extends any[]>(r
 export function handlerWithContext<S, C>(actionHandler: ReducerHandler<S, any>, ctx: C): ReducerHandler<S, C> {
     return (reducer: Reducer<S, C>) => actionHandler((state: S, effects: Executor<S>) => {
         return reducer(state, (effect) => {
-            effects((state, handler) => effect(state, handlerWithContext(handler, ctx), ctx))
+            effects((state, handler, ctx1) => effect(state, handlerWithContext(handler, ctx), ctx))
         })
     });
 }
 
-export function handlerWithContextBuilder<S, C, CP>(actionHandler: ReducerHandler<S, CP>, ctxBuilder: (parentCtx: CP) => C): ReducerHandler<S, C> {
-    return (reducer: Reducer<S, C>) => actionHandler((state: S, executor: Executor<S, CP>) => {
-        return reducer(state, (effect) => {
-            executor((state: S, handler: ReducerHandler<S, CP>, parentCtx: CP) =>
-                effect(state, handlerWithContextBuilder(actionHandler, ctxBuilder), ctxBuilder(parentCtx)))
-        })
-    });
+
+export function _handlerWithContextBuilder<S, C, CP>(handler: ReducerHandler<S, CP>, ctxBuilder: (parentCtx: CP) => C): ReducerHandler<S, C> {
+    return mapHandlerContext<S, CP, C>(ctxBuilder)(handler)
+}
+
+export function mapHandlerContext<S, C0, C1>(contextMapper: (ctx: C0, handler:ReducerHandler<S, C0>) => C1) {
+    return (handler: ReducerHandler<S, C0>): ReducerHandler<S, C1> => {
+        return (reducer: Reducer<S, C1>) => {
+            return handler(mapReducerExecutorContext(mapExecutorEffectContext(mapEffectContext<S, C0, C1>(contextMapper)))(reducer))
+        }
+    }
+}
+
+
+export function mapHandlerState<S0, S1>(stateMapper: (state: S0) => S1, stateUpdater: (parentState: S0, state: S1) => S0) {
+    return <C>(handler: ReducerHandler<S0, C>): ReducerHandler<S1, C> => {
+        return (reducer: Reducer<S1, C>) => {
+            return handler(mapReducerState<S0, S1>(stateMapper, stateUpdater)(reducer))
+        }
+    }
 }

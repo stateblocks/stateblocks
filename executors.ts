@@ -1,49 +1,45 @@
 import {ActionMapToMethodMap, Effect, Executor, IndexType, ReducerHandler, StatePart} from "./core";
-import {handlerWithContext, handlerWithContextBuilder, scopeHandler} from "./handlers";
-import {wrapEffectWithActionsMap} from "./effects";
+import {mapEffectContext, scopeEffect, wrapEffectWithActionsMap} from "./effects";
 
-export function executorWithScope<S, C, K extends IndexType<S>>(executor: Executor<S, C>, scope: K): Executor<StatePart<S, K>, C> {
-
-    return (effect: Effect<StatePart<S, K>, C>) => {
-        executor((state: S, handler: ReducerHandler<S, C>, ctx: C) => {
-            return effect((state as any)[scope], scopeHandler(scope, handler), ctx);
-        })
-    }
-
+export function _executorWithScope<S, C, K extends IndexType<S>>(executor: Executor<S, C>, scope: K): Executor<StatePart<S, K>, C> {
+    return mapExecutorEffect(scopeEffect<S, K>(scope))(executor)
 }
 
-export function executorWithContext<S, C = any>(executor: Executor<S, any>, ctx: C): Executor<S, C> {
-    return (effect: Effect<S, C>) => {
-        executor((state: S, handler: ReducerHandler<S>) => {
-            return effect(state, handlerWithContext(handler, ctx), ctx);
-        })
-    }
+export function _executorWithContext<C = any>(ctx: C) {
+    return mapExecutorEffect(mapEffectContext(() => ctx))
 }
 
-export function executorWithContextBuilder<S, C = any, CP = any>(executor: Executor<S, CP>, ctxBuilder: (parentCtx: CP) => C): Executor<S, C> {
-    return (effect: Effect<S, C>) => {
-        //TODO : utiliser wrapEffect ?
-        executor((state: S, handler: ReducerHandler<S, CP>, parentCtx: CP) => {
-            return effect(state, handlerWithContextBuilder(handler, ctxBuilder), ctxBuilder(parentCtx));
-        })
+export function _executorWithContextBuilder<S, C, CP>(executor: Executor<S, CP>, ctxBuilder: (parentCtx: CP, handler: ReducerHandler<S, CP>) => C): Executor<S, C> {
+    return mapExecutorEffect(mapEffectContext(ctxBuilder))(executor)
+}
+
+
+export function _executorWithActionsContext<S, M>(executor: Executor<S>, actions: M): Executor<S, ActionMapToMethodMap<M>> {
+    return mapExecutorEffect(wrapEffectWithActionsMap<S, M>(actions))(executor)
+}
+
+export function mapExecutorEffect<S0, S1, C0, C1>(effectMapper: (effect: Effect<S0, C0>) => Effect<S1, C1>) {
+    return (executor: Executor<S1, C1>) => {
+        return (effect: Effect<S0, C0>) => {
+            return executor(effectMapper(effect))
+        }
     }
 }
 
-export function executorWithActionsContext<S, M>(executor: Executor<S>, actions: M): Executor<S, ActionMapToMethodMap<M>> {
-    let effectWrapper = wrapEffectWithActionsMap(actions);
-    return (effect: Effect<S, ActionMapToMethodMap<M>>) => {
-        //TODO : utiliser wrapEffect ?
-        executor(effectWrapper(effect))
-    }
 
+export function mapExecutorEffectContext<S, C0, C1>(effectMapper: (effect: Effect<S, C0>) => Effect<S, C1>) {
+    return (executor: Executor<S, C1>): Executor<S, C0> => {
+        return (effect: Effect<S, C0>) => {
+            return executor(effectMapper(effect))
+        }
+    }
 }
 
-// export function executorWithState<S, S2, C>(executor: Executor<S, C>, stateMapper: (state:S) => S2): Executor<S2, C> {
-//
-//     return (effect: Effect<S2, C>) => {
-//         executor((state: S, handler: ReducerHandler<S>, ctx:C) => {
-//             return effect(stateMapper(state), handler, ctx);
-//         })
-//     }
-//
-// }
+export function mapExecutorEffectState<S0, S1, C>(effectMapper: (effect: Effect<S0, C>) => Effect<S1, C>) {
+    return (executor: Executor<S1, C>): Executor<S0, C> => {
+        return (effect: Effect<S0, C>) => {
+            return executor(effectMapper(effect))
+        }
+    }
+}
+
