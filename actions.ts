@@ -350,3 +350,16 @@ export function chainActions<S, C, M1 extends ActionMap<S, C>, M2 extends Action
     // @ts-ignore
     return newVar as ActionMapUnion<M1, M2>
 }
+
+/**
+ * Helper function to enforce actions map shape.
+ * Allow writing of actions without explicit typing of state and executor arguments.
+ * Raises compilation error if an action doesn't respect the required shape.
+ * Without this check, a bad shaped actions map could raise error when used. With this check, errors happen on actions
+ * definition.
+ */
+export function actionsOf<S, C>(){
+    return <M extends ActionMap<S, C>>(actions:M):ActionMapWithState<ActionMapWithCtx<M, C>, S> => {
+        return actions as any;
+    }
+}
