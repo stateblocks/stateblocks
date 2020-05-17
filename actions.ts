@@ -33,40 +33,6 @@ import {handlerWithContext} from "./handlers";
 import {mapValues as lodashMapValues} from "lodash-es";
 
 
-class ActionsModifier<S, C, M extends ActionMap<S, C>> {
-
-    actionsMap: M
-
-    constructor(actionsMap: M) {
-        this.actionsMap = actionsMap;
-    }
-
-    withContext(ctx: ActionMapToCtx<M>) {
-        return actionsWithContextValue(ctx, this.actionsMap)
-    }
-
-    withContextPart<C1>(ctx: C1) {
-        return actionsWithContextPart(ctx, this.actionsMap)
-    }
-}
-
-type ActionMap2<S, C> = { [key: string]: ReducerCreator<any[], S, C> }
-
-
-export function useActions<S, C, M extends ActionMap2<S, C>>(actionMap: M) {
-    return new ActionsModifier(actionMap)
-}
-
-function test() {
-    type Context = {
-        a: string,
-        b: number,
-    }
-    const increment = () => (state: number, exec: Executor<number, Context>) => state + 1;
-    const actionMap = {increment: increment};
-    useActions(actionMap).withContext({a: "test", b: 42})
-    useActions(actionMap).withContextPart({a: 42})
-}
 
 
 export function mapActionsValues<T, U, A>(fn: (arg: T) => U, actions: A): { [key in keyof A]: U } {
@@ -162,7 +128,6 @@ export function actionsWithContextActions<M, C extends FunctionsContext>(ctxActi
     // @ts-ignore
     return mapActionsReducers(reducerWithActionsContext(ctxAction), actions)
 }
-
 
 export function actionsWithContextPart<M, C>(ctx: C, actions: M)
     : ActionMapWithCtx<M, Without<ActionMapToCtx<M>, C>> {

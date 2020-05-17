@@ -1,13 +1,13 @@
 import {Counter, createMockCounterContext} from "./Counter";
 import {Store} from "../store";
-import {actionsWithContextValue} from "../actions";
+import {actionsWithContext, actionsWithContextValue} from "../actions";
 
 
 test("simple counter with effect", async () => {
     let counterCtx = createMockCounterContext();
 
     let counterActions = Counter.actions;
-    let actions = actionsWithContextValue(counterCtx, counterActions);
+    let actions = actionsWithContext(counterCtx, counterActions);
 
     const store = new Store(Counter.initialState);
 
