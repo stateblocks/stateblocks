@@ -1,5 +1,6 @@
 import {ActionMapToMethodMap, Effect, Executor, IndexType, ReducerHandler, StatePart} from "./core";
 import {mapEffectContext, scopeEffect, wrapEffectWithActionsMap} from "./effects";
+import {mapHandlerContext} from "./handlers";
 
 export function _executorWithScope<S, C, K extends IndexType<S>>(executor: Executor<S, C>, scope: K): Executor<StatePart<S, K>, C> {
     return mapExecutorEffect(scopeEffect<S, K>(scope))(executor)
@@ -43,3 +44,12 @@ export function mapExecutorEffectState<S0, S1, C>(effectMapper: (effect: Effect<
     }
 }
 
+export function mapExecutorContext<S, C0, C1>(ctxMapper: (parentCtx: C0, handler: ReducerHandler<S, C0>) => C1){
+    return (executor: Executor<S, C0>): Executor<S, C1> => {
+        return (effect: Effect<S, C1>) => {
+            return executor((state, handler, ctx) => {
+                effect(state, mapHandlerContext(ctxMapper)(handler), ctxMapper(ctx, handler))
+            })
+        }
+    }
+}

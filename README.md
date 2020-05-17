@@ -1,4 +1,9 @@
 
+TODO
+
+- composition and reuse
+- context for effects
+
 
 ## Requirements
 

@@ -1,25 +1,19 @@
 import {SampleStorage, sleep} from "./samples/utils";
-import {
-    ActionMap,
-    ActionMapToCtx, ActionMapWithCtx,
-    ActionMapWithState,
-    Effect,
-    Executor,
-    IndexType,
-    Reducer,
-    ReducerCreator,
-} from "./core";
+import {ActionMapToMethodMap, ActionMapWithCtx, Effect, Executor, Reducer,} from "./core";
 import {Store} from "./store";
 import {
     actionsWithActionsContextPart,
-    actionsWithContext,
+    actionsWithContextValue,
     actionsWithContextBuilderPart,
     actionsWithContextPart,
+    actionsWithContext,
     chainActions,
+    composeActions,
     scopeActions,
     scopeActionsWithCtxBuilder
 } from "./actions";
 import {handleActionMap} from "./handlers";
+import {createContextBuilderFromActions} from "./effects";
 
 
 test("simple actions with context", async () => {
@@ -42,7 +36,7 @@ test("simple actions with context", async () => {
         }
     }
 
-    let actions1 = actionsWithContext({bar, baz}, actions)
+    let actions1 = actionsWithContextValue({bar, baz}, actions)
 
     let store: Store<number>;
     store = new Store(0);
@@ -95,7 +89,7 @@ test("complex actions with context", async () => {
         },
 
         subActionsFn: (shift: number) => ({
-            test2: () => (state: State, executor: Executor<State, Context>): State => {
+            test3: () => (state: State, executor: Executor<State, Context>): State => {
                 executor((state, handler, ctx) => {
                     ctx.foo();
                     ctx.bar();
@@ -196,8 +190,203 @@ test("complex actions with context", async () => {
     expect(baz.mock.calls.length).toBe(1);
     await store.update(actions6.subActions.test2());
     expect(store.state).toBe(2);
-    await store.update(actions6.subActionsFn(2).test2());
+    await store.update(actions6.subActionsFn(2).test3());
     expect(store.state).toBe(4);
+
+})
+
+test("complex actions with context universal", async () => {
+
+    type State = number;
+
+    type Foo = {
+        foo(): any,
+    }
+
+    type Bar = {
+        bar(): any,
+    }
+
+    type Baz = {
+        baz(): any
+    }
+
+    type Context = Foo & Bar & Baz
+
+
+    const actions = {
+        test: () => (state: State, executor: Executor<State, Context>): State => {
+            executor((state, handler, ctx) => {
+                ctx.foo();
+                ctx.bar();
+                ctx.baz();
+            });
+            return state + 1;
+        },
+
+        subActions: {
+            test2: () => (state: State, executor: Executor<State, Context>): State => {
+                executor((state, handler, ctx) => {
+                    ctx.foo();
+                    ctx.bar();
+                    ctx.baz();
+                });
+                return state + 1;
+            },
+        },
+
+        subActionsFn: (shift: number) => ({
+            test3: () => (state: State, executor: Executor<State, Context>): State => {
+                executor((state, handler, ctx) => {
+                    ctx.foo();
+                    ctx.bar();
+                    ctx.baz();
+                });
+                return state + shift;
+            }
+        }),
+
+    };
+
+    function createActions() {
+
+        let foo = jest.fn();
+        let bar = jest.fn();
+        let baz = jest.fn();
+
+        let barCtx = {bar};
+
+
+        /**
+         * This action map will web available in context.
+         */
+        const fooActionCtx = {
+            foo: () => (state: State, executor: Executor<State, Bar>) => {
+                foo();
+                // Ensure thar side effects in actions context are executed
+                executor((state, handler, ctx) => {
+                    ctx.bar()
+                })
+                // Test that this reducer is correctly applied
+                return state + 1;
+            }
+        };
+
+
+        const bazCtxBuilder = (ctxParent: Bar) => ({
+            baz: () => {
+                ctxParent.bar();
+                baz();
+            }
+        });
+
+
+        const actionsWithFoo: ActionMapWithCtx<typeof actions, Bar & Baz> = actionsWithContext(createContextBuilderFromActions(fooActionCtx), actions);
+        const actionsWithFooBaz: ActionMapWithCtx<typeof actions, Bar> = actionsWithContext(bazCtxBuilder, actionsWithFoo);
+        const actionsWithFullContext: ActionMapWithCtx<typeof actions, void> = actionsWithContext(barCtx, actionsWithFooBaz);
+        return {actionsWithFullContext, foo, bar, baz}
+    }
+
+
+    let {actionsWithFullContext, bar, baz, foo} = createActions();
+    let store = new Store(0);
+    await store.update(actionsWithFullContext.test());
+    expect(store.state).toBe(2);
+    expect(foo.mock.calls.length).toBe(1);
+    expect(bar.mock.calls.length).toBe(3); // called directly, in foo actions context and in bar context builder
+    expect(baz.mock.calls.length).toBe(1);
+    await store.update(actionsWithFullContext.subActions.test2());
+    expect(foo.mock.calls.length).toBe(2);
+    expect(bar.mock.calls.length).toBe(6); // called directly, in foo actions context and in bar context builder
+    expect(baz.mock.calls.length).toBe(2);
+    expect(store.state).toBe(4);
+    await store.update(actionsWithFullContext.subActionsFn(2).test3());
+    expect(foo.mock.calls.length).toBe(3);
+    expect(bar.mock.calls.length).toBe(9); // called directly, in foo actions context and in bar context builder
+    expect(baz.mock.calls.length).toBe(3);
+    expect(store.state).toBe(7);
+
+
+})
+
+
+test("types : actions with context universal", () => {
+
+    type A = { a: string }
+    type B = { b: number }
+    type C = { c: () => void }
+
+    type Context = A & B & C
+
+    const actions = {
+        increment: () => (state: number, executor: Executor<number, Context>) => state + 1
+    }
+
+    const cImpl = {
+        c: () => {
+        }
+    };
+
+    actionsWithContextBuilderPart(() => cImpl, actions)
+        .increment()(0, null as Executor<number, A & B>)
+
+    const contextActions = ({
+        c: () => (state: number, exec: Executor<number, A & B>) => state
+    })
+    actionsWithActionsContextPart(contextActions, actions)
+        .increment()(0, null as Executor<number, A & B>)
+
+    const ctxBuilder = createContextBuilderFromActions(contextActions);
+    actionsWithContext(ctxBuilder, actions)
+        .increment()(0, null as Executor<number, A & B>)
+
+    /**
+     * Provide context part builder with input arg
+     */
+    let newActions1 = actionsWithContext((arg: { input: string }) => ({
+        a: "test",
+    }), actions)
+
+    let action1: Reducer<number, { input: string, b: number }> = newActions1.increment()
+
+    /**
+     * Provide full context builder without arg
+     */
+    let newActions2 = actionsWithContext(() => ({
+        a: "test",
+        b: 1,
+        c: () => {
+        }
+    }), actions)
+
+
+    let action2: Reducer<number> = newActions2.increment()
+
+    /**
+     * Provide full context builder with arg
+     */
+    let newActions3 = actionsWithContext((ctxParent: { d: number }) => ({
+        a: "test",
+        b: 1,
+    }), actions)
+    let action3: Reducer<number, { d: number } & C> = newActions3.increment()
+
+    /**
+     * Provide full context object
+     */
+    let newActions4 = actionsWithContext({
+        a: "test",
+        b: 1,
+    }, actions)
+    let action4: Reducer<number, C> = newActions4.increment()
+
+    /**
+     * Provide part context object
+     */
+    let newActions5 = actionsWithContext({
+        a: "test",
+    }, actions)
+    let action5: Reducer<number, { b: number }> = newActions5.increment()
 
 })
 
@@ -228,7 +417,7 @@ test("add context to scoped action", async () => {
     };
 
 
-    var actionsWithContext1 = actionsWithContext(counterContext, actions);
+    var actionsWithContext1 = actionsWithContextValue(counterContext, actions);
 
     var store = new Store({"scope": 0});
     await store.update(actionsWithContext1.scope.setValue(3));
@@ -397,6 +586,22 @@ test("scope action", () => {
 
 });
 
+test("scope action with compose", () => {
+    type State = { top: number, bottom: number };
+    let actions = composeActions({
+        top: testActions,
+        bottom: testActions,
+    })
+
+    const executor = createNoopExecutor<State>();
+
+    let initialState = {top: 0, bottom: 0};
+    let state: State = null;
+    state = actions.top.simpleAction1(1)(initialState, executor);
+    expect(state).toEqual({top: 1, bottom: 0});
+
+});
+
 test("scope actions with variable scope", () => {
     type State = { scope: number };
     let actions = scopeActions<State>()(testActions);
@@ -529,7 +734,6 @@ test("scope actions with action in effect", async () => {
     expect(store.state).toEqual({scope: 3});
 
 });
-
 
 
 //TODO : choose and fix

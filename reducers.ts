@@ -12,7 +12,8 @@ import {
 import {_executorWithContext, mapExecutorEffectContext, mapExecutorEffectState} from "./executors";
 import {assertFunction} from "./asserts";
 import {handleActionMap, handlerWithContext} from "./handlers";
-import {mapEffectState, wrapEffectWithActionsMap, wrapEffectWithPartialActionMap} from "./effects";
+import {mapEffectContext, mapEffectState, wrapEffectWithActionsMap, wrapEffectWithPartialActionMap} from "./effects";
+import {ContextBuilder} from "./actions";
 
 //TODO curry
 export function _reducerWithWrappedEffect<S, C0, C>(effectWrapper: (effect: Effect<S, C>) => Effect<S, C0>, reducer: Reducer<S, C>) {
@@ -86,6 +87,19 @@ export function reducerWithContextBuilder<C, C0>(ctxBuilder: (ctxIn: C0) => C): 
         const newCtx = ctxBuilder(ctx);
         return effect(state, handlerWithContext(handler, newCtx), newCtx);
     };
+    return <S>(reducer: Reducer<S, C>) => _reducerWithWrappedEffect(effectWrapper, reducer);
+}
+
+export function reducerWithContextBuilderPart2<M, C0, C, S>(ctxBuilder: ContextBuilder<C0, C, S>)
+    : (reducer: Reducer<S, C>) => Reducer<S, Without<C0, C>> {
+    let effectWrapper = (effect: Effect<S, C>) => (state: S, handler: ReducerHandler<S, C0>, ctx: C0) => {
+        let newCtx = {
+            ...ctxBuilder(ctx, handler), ...ctx
+        };
+        // @ts-ignore //TODO
+        return effect(state, handlerWithContext(handler, newCtx), newCtx)
+    };
+    // @ts-ignore
     return <S>(reducer: Reducer<S, C>) => _reducerWithWrappedEffect(effectWrapper, reducer);
 }
 
