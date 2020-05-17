@@ -2,6 +2,7 @@ import {
     ActionMap,
     ActionMapToCtx,
     ActionMapToMethodMap,
+    ActionMapToState,
     ActionMapWithCtx,
     ActionMapWithReducer,
     ActionMapWithState,
@@ -12,7 +13,6 @@ import {
     IndexType,
     Reducer,
     ReducerCreator,
-    ReducerCreatorWithoutContext,
     ReducerHandler,
     StatePart,
     UnionOrVoid,
@@ -24,15 +24,13 @@ import {
     reducerWithActionsContext,
     reducerWithActionsContextPart,
     reducerWithContextBuilder,
-    reducerWithContextBuilderPart,
+    reducerWithContextBuilderPart, reducerWithContextBuilderPart2,
     reducerWithContextPart,
     scopeReducer
 } from "./reducers";
 import {assertFunction, assertObject} from "./asserts";
-import {handleActionMap, handlerWithContext} from "./handlers";
-import {_executorWithActionsContext, mapExecutorEffect} from "./executors";
+import {handlerWithContext} from "./handlers";
 import {mapValues as lodashMapValues} from "lodash-es";
-import {mapEffectContext} from "./effects";
 
 
 class ActionsModifier<S, C, M extends ActionMap<S, C>> {
@@ -44,7 +42,7 @@ class ActionsModifier<S, C, M extends ActionMap<S, C>> {
     }
 
     withContext(ctx: ActionMapToCtx<M>) {
-        return actionsWithContext(ctx, this.actionsMap)
+        return actionsWithContextValue(ctx, this.actionsMap)
     }
 
     withContextPart<C1>(ctx: C1) {
@@ -54,7 +52,6 @@ class ActionsModifier<S, C, M extends ActionMap<S, C>> {
 
 type ActionMap2<S, C> = { [key: string]: ReducerCreator<any[], S, C> }
 
-type InferActionMap<M> = M extends ActionMap<infer S, infer C> ? ActionMap<S, C> : never
 
 export function useActions<S, C, M extends ActionMap2<S, C>>(actionMap: M) {
     return new ActionsModifier(actionMap)
@@ -106,7 +103,7 @@ export function actionsWithListener<M, C, S>(listener: Reducer<S, C>, actions: M
     return mapActionsReducers((reducer: Reducer<S, C>) => {
         return (state: S, executor: Executor<S, C>) => {
             const listeningExecutor = (effect: Effect<S, C>) => {
-                executor((state, handler, ctx) => {
+                executor((state, handler, ctx: C) => {
                     const listeningHandler = (reducer: Reducer<S, C>) => {
                         return handler((state, executor) => {
                             let s = reducer(state, listeningExecutor);
@@ -124,76 +121,31 @@ export function actionsWithListener<M, C, S>(listener: Reducer<S, C>, actions: M
     }, actions)
 }
 
+export type ContextBuilder<C0, C1, S> = (ctxIn: C0, handler: ReducerHandler<S, C0>) => C1
 
-function actionsWithFull<CP, M>(ctxOrFunction: CP, actions: M):
-    CP extends (ctxIn: infer C0) => infer C ?
-        ActionMapWithCtx<M, UnionOrVoid<C0, Without<ActionMapToCtx<M>, C>>>
+type CtxBuilderToCtxUnion<CB, MC> = CB extends (ctxIn: infer C0) => infer C ?
+    UnionOrVoid<C0, Without<MC, C>>
+    :
+    CB extends ContextBuilder<infer C0, infer C, infer S> ?
+        UnionOrVoid<C0, Without<MC, C>>
         :
-        ActionMapWithCtx<M, Without<ActionMapToCtx<M>, CP>> {
-    return null
-}
+        Without<MC, CB>
 
-function testFullContext() {
 
-    type Context = {
-        a: string,
-        b: number,
+export function actionsWithContext<CB, M>(ctxOrFunction: CB, actions: M):
+    ActionMapWithCtx<M, CtxBuilderToCtxUnion<CB, ActionMapToCtx<M>>> {
+    if (typeof ctxOrFunction == "function") {
+        // @ts-ignore
+        return mapActionsReducers(reducerWithContextBuilderPart2(ctxOrFunction), actions)
+    } else {
+        // @ts-ignore
+        return actionsWithContextPart(ctxOrFunction, actions)
     }
-
-    const actions = {
-        increment: () => (state: number, executor: Executor<number, Context>) => state + 1
-    }
-
-    /**
-     * Provide context part builder with input arg
-     */
-    let newActions1 = actionsWithFull((arg: { input: string }) => ({
-        a: "test",
-    }), actions)
-
-    let action1: Reducer<number, { input: string, b: number }> = newActions1.increment()
-
-    /**
-     * Provide full context builder without arg
-     */
-    let newActions2 = actionsWithFull(() => ({
-        a: "test",
-        b: 1,
-    }), actions)
-
-
-    let action2: Reducer<number> = newActions2.increment()
-
-    /**
-     * Provide full context builder with arg
-     */
-    let newActions3 = actionsWithFull((arg: string) => ({
-        a: "test",
-        b: 1,
-    }), actions)
-    let action3: Reducer<number, string> = newActions3.increment()
-
-    /**
-     * Provide full context object
-     */
-    let newActions4 = actionsWithFull({
-        a: "test",
-        b: 1,
-    }, actions)
-    let action4: Reducer<number> = newActions4.increment()
-
-    /**
-     * Provide part context object
-     */
-    let newActions5 = actionsWithFull({
-        a: "test",
-    }, actions)
-    let action5: Reducer<number, { b: number }> = newActions5.increment()
 }
 
 
 //TODO : on ne vérifie pas que les actions prennent le bon contexte
-export function actionsWithContext<M>(ctx: ActionMapToCtx<M>, actions: M)
+export function actionsWithContextValue<M>(ctx: ActionMapToCtx<M>, actions: M)
     : ActionMapWithCtx<M, void> {
     // @ts-ignore
     return mapActionsReducers(_reducerWithContext(ctx), actions)
@@ -245,6 +197,18 @@ export function scopeActions<S>(key?: any): any {
         return createScopedActionMap<S>()
     }
 }
+
+type ComposeState<M> = { [P in keyof M]: ActionMapToState<M[P]> }
+type Composed<M> = { [P in keyof M]: ActionMapWithState<M[P], ComposeState<M>> }
+
+export function composeActions<M>(actions: M): Composed<M> {
+    let output: any = {}
+    for (let scope in actions) {
+        output[scope] = scopeActions<any>(scope)(actions[scope])
+    }
+    return output;
+}
+
 
 const createScopedActionMap: <S>() => <M>(actions: M) => (key: IndexType<S>) => ActionMapWithState<M, S> =
     //We curry this function to benefit from type inference on actions argument
@@ -358,8 +322,8 @@ export function chainActions<S, C, M1 extends ActionMap<S, C>, M2 extends Action
  * Without this check, a bad shaped actions map could raise error when used. With this check, errors happen on actions
  * definition.
  */
-export function actionsOf<S, C>(){
-    return <M extends ActionMap<S, C>>(actions:M):ActionMapWithState<ActionMapWithCtx<M, C>, S> => {
+export function actionsOf<S, C>() {
+    return <M extends ActionMap<S, C>>(actions: M): ActionMapWithState<ActionMapWithCtx<M, C>, S> => {
         return actions as any;
     }
 }

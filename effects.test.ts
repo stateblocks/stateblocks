@@ -1,8 +1,14 @@
-import {mapEffectContext, wrapEffectWithPartialActionMap} from "./effects";
-import {Effect, Executor, Reducer, ReducerHandler} from "./core";
+import {createContextBuilderFromActions, mapEffectContext, wrapEffectWithPartialActionMap} from "./effects";
+import {Effect, Executor, Reducer, ReducerHandler, UnionOrVoid, Without} from "./core";
 import {Store} from "./store";
 import {mapReducerExecutorContext} from "./reducers";
 import {mapExecutorEffect} from "./executors";
+
+function createMockHandler<S, C>():ReducerHandler<S, C>{
+    return () => {
+        return Promise.resolve()
+    }
+}
 
 
 test("wrap effect with action context", () => {
@@ -65,4 +71,30 @@ test("wrap effect with action context", () => {
             return state + 1;
         }
     })(effect)(0, createTestHandler({test}), {test})
+
+
+})
+
+test("types : create context builder from actions", () => {
+
+    type State = number;
+
+    let test = () => {
+    }
+
+    let context = createContextBuilderFromActions({
+        increment: () => (state: State, executor: Executor<State, { test: () => void }>) => {
+            return state + 1;
+        },
+        decrement: () => (state: State, executor: Executor<State, { test: () => void }>) => {
+            return state + 1;
+        }
+    })({test}, createMockHandler());
+
+    context.test()
+    context.increment();
+    context.decrement();
+
+
+
 })

@@ -1,11 +1,13 @@
-import {handleActionMap, handlerWithContext, mapHandlerContext, mapHandlerState, scopeHandler} from "./handlers";
+import {handleActionMap, mapHandlerContext, mapHandlerState} from "./handlers";
 import {
     ActionMapToCtx,
     ActionMapToMethodMap,
     Effect,
     IndexType,
     ReducerHandler,
-    StatePart, UnionOrVoid, updateState,
+    StatePart,
+    UnionOrVoid,
+    updateState,
     Without,
 } from "./core";
 
@@ -16,17 +18,17 @@ export function wrapEffectWithActionsMap<S, M>(actions: M): (effect: Effect<S, A
     return mapEffectContext(ctxMapper);
 }
 
-export function wrapEffectWithPartialActionMap<M>(actions: M): <S, C>(effect: Effect<S, C>) => Effect<S, UnionOrVoid<ActionMapToCtx<M>, Without<C, ActionMapToMethodMap<M>>>> {
 
-    let contextBuilder = <S, C>(ctx:C, handler:ReducerHandler<S, C>) => {
-        let ctxFromActions = handleActionMap(handler, actions);
-        let newCtx = {
-            ...ctxFromActions, ...ctx
-        };
-        return newCtx;
-    }
+export function createContextBuilderFromActions<M>(actions: M)  {
+    return <S, C>(ctx: C, handler: ReducerHandler<S, C>): ActionMapToMethodMap<M> & C => ({
+        // @ts-ignore
+        ...(handleActionMap(handler, actions)), ...ctx
+    })
+}
+
+export function wrapEffectWithPartialActionMap<M>(actions: M):  <S, C>(effect: Effect<S, C>) => Effect<S, UnionOrVoid<ActionMapToCtx<M>, Without<C, ActionMapToMethodMap<M>>>>  {
     // @ts-ignore
-    return mapEffectContext(contextBuilder);
+    return mapEffectContext(createContextBuilderFromActions(actions));
 }
 
 
