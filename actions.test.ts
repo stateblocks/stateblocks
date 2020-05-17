@@ -1,10 +1,6 @@
-import {actionsOf, useActions} from "./actions";
-import {Counter, createMockCounterContext} from "./samples/Counter";
+import {actionsOf} from "./actions";
 import {
-    ActionMap,
     ActionMapToCtx,
-    ActionMapWithCtx,
-    ActionMapWithState,
     Effect,
     Executor, Reducer,
     ReducerCreator
@@ -32,9 +28,9 @@ test("Context and effects typing experiments", () => {
         test2: () => (state: number, exec: Executor<number, B>) => state,
     }
 
-    let chose: ActionsMapToContextIntersection<typeof truc> = null;
-    chose.a;
-    chose.b;
+    let ctxIntersection: ActionsMapToContextIntersection<typeof truc> = {a: 1, b: "test"};
+    ctxIntersection.a;
+    ctxIntersection.b;
 
     type A = { a: number }
     type B = { b: string }
@@ -55,13 +51,13 @@ test("Context and effects typing experiments", () => {
     })
 
 
-    let ctx: ActionMapToCtx<typeof actions> = null;
+    let ctx: ActionMapToCtx<typeof actions> = {a:1};
     ctx.a
 
     //Should compile. ctx should contain the intersection of all context, but contains only the union
     // ctx.b
 
-    let ctxUnion:ActionsMapToContextIntersection<typeof actions> = null;
+    let ctxUnion: ActionsMapToContextIntersection<typeof actions> = {a: 1, b: "test"};
     ctxUnion.a;
     ctxUnion.b;
 
@@ -73,7 +69,7 @@ test("Context and effects typing experiments", () => {
     // should compile
     // executorAB(effect)
 
-    let reducerA: Reducer<number, A> = null;
+    let reducerA: Reducer<number, A> = (() => {}) as any;
     reducerA(0, executorAB)
 
 

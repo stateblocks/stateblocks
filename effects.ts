@@ -19,7 +19,7 @@ export function wrapEffectWithActionsMap<S, M>(actions: M): (effect: Effect<S, A
 }
 
 
-export function createContextBuilderFromActions<M>(actions: M)  {
+export function contextWithActions<M>(actions: M)  {
     return <S, C>(ctx: C, handler: ReducerHandler<S, C>): ActionMapToMethodMap<M> & C => ({
         // @ts-ignore
         ...(handleActionMap(handler, actions)), ...ctx
@@ -28,7 +28,7 @@ export function createContextBuilderFromActions<M>(actions: M)  {
 
 export function wrapEffectWithPartialActionMap<M>(actions: M):  <S, C>(effect: Effect<S, C>) => Effect<S, UnionOrVoid<ActionMapToCtx<M>, Without<C, ActionMapToMethodMap<M>>>>  {
     // @ts-ignore
-    return mapEffectContext(createContextBuilderFromActions(actions));
+    return mapEffectContext(contextWithActions(actions));
 }
 
 

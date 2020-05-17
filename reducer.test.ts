@@ -13,7 +13,7 @@ import {
     scopeActionsWithCtxBuilder
 } from "./actions";
 import {handleActionMap} from "./handlers";
-import {createContextBuilderFromActions} from "./effects";
+import {contextWithActions} from "./effects";
 
 
 test("simple actions with context", async () => {
@@ -281,7 +281,7 @@ test("complex actions with context universal", async () => {
         });
 
 
-        const actionsWithFoo: ActionMapWithCtx<typeof actions, Bar & Baz> = actionsWithContext(createContextBuilderFromActions(fooActionCtx), actions);
+        const actionsWithFoo: ActionMapWithCtx<typeof actions, Bar & Baz> = actionsWithContext(contextWithActions(fooActionCtx), actions);
         const actionsWithFooBaz: ActionMapWithCtx<typeof actions, Bar> = actionsWithContext(bazCtxBuilder, actionsWithFoo);
         const actionsWithFullContext: ActionMapWithCtx<typeof actions, void> = actionsWithContext(barCtx, actionsWithFooBaz);
         return {actionsWithFullContext, foo, bar, baz}
@@ -336,7 +336,7 @@ test("types : actions with context universal", () => {
     actionsWithActionsContextPart(contextActions, actions)
         .increment()(0, null as Executor<number, A & B>)
 
-    const ctxBuilder = createContextBuilderFromActions(contextActions);
+    const ctxBuilder = contextWithActions(contextActions);
     actionsWithContext(ctxBuilder, actions)
         .increment()(0, null as Executor<number, A & B>)
 

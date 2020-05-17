@@ -1,4 +1,4 @@
-import {createContextBuilderFromActions, mapEffectContext, wrapEffectWithPartialActionMap} from "./effects";
+import {contextWithActions, mapEffectContext, wrapEffectWithPartialActionMap} from "./effects";
 import {Effect, Executor, Reducer, ReducerHandler, UnionOrVoid, Without} from "./core";
 import {Store} from "./store";
 import {mapReducerExecutorContext} from "./reducers";
@@ -82,7 +82,7 @@ test("types : create context builder from actions", () => {
     let test = () => {
     }
 
-    let context = createContextBuilderFromActions({
+    let context = contextWithActions({
         increment: () => (state: State, executor: Executor<State, { test: () => void }>) => {
             return state + 1;
         },

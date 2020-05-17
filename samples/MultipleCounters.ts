@@ -1,13 +1,11 @@
 import {
-    ActionMapToMethodMap,
     Executor,
-    Reducer, ReducerHandler,
+    ReducerHandler,
 } from "../core";
-import {Counter, CounterContext, CounterState} from "./Counter";
-import {actionsWithContextActions, actionsWithListener, scopeActions} from "../actions";
-import {reducerWithActionsContext, scopeReducer} from "../reducers";
-import {_executorWithActionsContext, _executorWithScope} from "../executors";
+import {Counter, CounterState} from "./Counter";
+import {actionsWithContext, actionsWithListener, scopeActions} from "../actions";
 import {handleActionMap} from "../handlers";
+import {contextWithActions} from "../effects";
 
 
 export type MultipleCountersState = {
@@ -19,20 +17,6 @@ export type MultipleCountersState = {
 }
 
 
-function executorWithCounterContext(executor: Executor<MultipleCountersState>, idx: number): Executor<MultipleCountersState, CounterContext> {
-    return _executorWithActionsContext(executor, {
-        ...App.actions,
-        onReset(count: number) {
-            return App.actions.onCounterReset(idx, count);
-        }
-    });
-}
-
-function counterExecutor(executor: Executor<MultipleCountersState>, idx: number): Executor<CounterState, CounterContext> {
-    const executor1 = _executorWithScope(executorWithCounterContext(executor, idx), "counters");
-    return _executorWithScope(executor1, idx);
-}
-
 function getTotal(counters: CounterState[]) {
     let result = 0;
     for (let i = 0; i < counters.length; i++) {
@@ -40,23 +24,6 @@ function getTotal(counters: CounterState[]) {
     }
     return result;
 }
-
-
-function scopeCounterReducer(idx: number, reducer: Reducer<CounterState, CounterContext>): Reducer<MultipleCountersState> {
-    const newVar:Reducer<MultipleCountersState, CounterContext> = scopeReducer<MultipleCountersState>("counters")(scopeReducer<CounterState[]>(idx)(reducer));
-    const actions = {
-        onReset(count: number) {
-            return App.actions.onCounterReset(idx, count);
-        }
-    };
-
-    let test:CounterContext = null;
-    let mm:ActionMapToMethodMap<typeof actions> = test;
-
-    return reducerWithActionsContext(actions)(newVar);
-}
-
-
 
 
 
@@ -83,9 +50,9 @@ export const App = {
 
         counterActions(idx: number) {
 
-            let counterActions = actionsWithContextActions({
+            let counterActions = actionsWithContext(contextWithActions({
                 onReset: (count: number) => App.actions.onCounterReset(idx, count)
-            }, scopeActions<MultipleCountersState>("counters")(scopeActions<CounterState[]>(idx)( Counter.actions)));
+            }), scopeActions<MultipleCountersState>("counters")(scopeActions<CounterState[]>(idx)( Counter.actions)));
             // return counterActions;
             return actionsWithListener(App.actions.onCounterChange(idx), counterActions);
 
@@ -100,20 +67,20 @@ export const App = {
         },
 
         top() {
-            return actionsWithContextActions({
+            return actionsWithContext(contextWithActions({
                 onReset(count: number) {
                     return App.actions.onCounterReset(-1, count);
                 }
-            }, scopeActions<MultipleCountersState>("top")(Counter.actions));
+            }), scopeActions<MultipleCountersState>("top")(Counter.actions));
         },
 
         //TODO : si on met pas ca sous forme de fonction le typage de App est circulaire
         bottom() {
-            return actionsWithContextActions({
+            return actionsWithContext(contextWithActions({
                 onReset(count: number) {
                     return App.actions.onCounterReset(-1, count);
                 }
-            }, scopeActions<MultipleCountersState>("bottom")(Counter.actions));
+            }), scopeActions<MultipleCountersState>("bottom")(Counter.actions));
         },
 
         init: () => (state: MultipleCountersState, executor: Executor<MultipleCountersState>) => {
