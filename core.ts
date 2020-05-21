@@ -1,4 +1,10 @@
-export type Reducer<S, C = void> = (state: S, executor?: Executor<S, C>) => S
+import {CtxBuilderToCtxUnion} from "./actions";
+
+export type Reducer<S, C = void> = ReducerWithContext<S, C>
+
+export type ReducerSimple<S> = (state: S) => S
+
+export type ReducerWithContext<S, C> = (state: S, executor: (effect: Effect<S, C>) => void) => S
 
 /**
  * An executor is a function taking an effect to execute. The effect may require a part of the executor context,
@@ -8,9 +14,14 @@ export type Reducer<S, C = void> = (state: S, executor?: Executor<S, C>) => S
  */
 export type Executor<S, C = void> = (effect: Effect<S, C>) => void;
 
-export type Effect<S, C= void> = (state: S, handler: ReducerHandler<S, C>, ctx: C) => Promise<void> | void;
+export type Effect<S, C = void> = (state: S, handler: ReducerHandler<S, C>, ctx: C) => Promise<void> | void;
+// export type Effect<S, C = void> = (state: S, handler: (reducer: ((state: S, executor: Executor<S, C>) => S) | ((state: S, executor: Executor<S, void>) => S) | ((state: S) => S)) => Promise<void>, ctx: C) => Promise<void> | void;
 
 export type ReducerCreator<A extends any[], S, C = void> = (...args: A) => Reducer<S, C>
+
+export type ReducerCreatorWithCtx<A extends any[], S, C = void> = (...args: A) => ReducerWithContext<S, C>
+
+export type ReducerCreatorSimple<A extends any[], S> = (...args: A) => ReducerSimple<S>
 
 export type ReducerHandler<S, C = void> = (reducer: Reducer<S, C>) => Promise<void>
 
@@ -49,25 +60,42 @@ export type ActionToMethod<A> =
 
 export type ActionMapToMethodMap<M> = { [K in keyof M]: ActionToMethod<M[K]> }
 
+
+type ValuesTypes<M> = M[keyof M]
+
+type ActionsMapToCtxMap<M> = {
+    [P in keyof M]:
+    M[P] extends ReducerCreatorSimple<infer A, infer S> ? void :
+        M[P] extends ReducerCreator<infer A, infer S, infer C> ? C :
+            M[P] extends (...args: any) => infer M2 ? ValuesTypes<ActionsMapToCtxMap<M2>> :
+                M[P] extends Object ? ValuesTypes<ActionsMapToCtxMap<M[P]>> :
+                    never
+}
+
+export type ActionMapToCtxIntersection<M> = UnionToIntersection<ValuesTypes<ActionsMapToCtxMap<M>>>
+
 export type ActionMapToCtx<M> = M extends ActionMap<infer S, infer C> ? C : never
+
+export type UnionToIntersection<U> =
+    (U extends any ? (k: U) => void : never) extends ((k: infer I) => void) ? I : never
 
 export type ActionMapToState<M> = M extends ActionMap<infer S, infer C> ? S : never
 
-type ActionWithState<T, S> = T extends ReducerCreator<infer A, infer S1, infer C> ?
-    ReducerCreator<A, S, C>
-    :
-    T extends (...args: any[]) => Object ?
-        (...args: any[]) => ActionMapWithState<ReturnType<T>, S>
-        :
-        { [K in keyof T]: ActionWithState<T[K], S> }
+type ActionWithState<T, S> =
+    T extends ReducerCreatorSimple<infer A, infer S1> ? ReducerCreatorSimple<A, S>
+        : T extends ReducerCreatorWithCtx<infer A, infer S1, infer C> ? ReducerCreatorWithCtx<A, S, C>
+        : T extends (...args: any[]) => Object ? (...args: any[]) => ActionMapWithState<ReturnType<T>, S>
+            : { [K in keyof T]: ActionWithState<T[K], S> }
 
 export type ActionMapWithState<M, S> = ActionWithState<M, S>
 
-type ActionWithCtx<T, C> = T extends ReducerCreator<infer A, infer S, infer C1> ?
-    ReducerCreator<A, S, C>
-    : T extends (...args: any[]) => Object ?
-        (...args: any[]) => ActionMapWithCtx<ReturnType<T>, C>
-        : { [K in keyof T]: ActionWithCtx<T[K], C> }
+// type ActionWithState<T, S> = { [K in keyof T]: T[K] extends ReducerCreator<infer A, infer S1, infer C> ? ReducerCreator<A, S, C> : void }
+
+type ActionWithCtx<T, C> =
+    T extends ReducerCreatorSimple<infer A, infer S> ? ReducerCreatorSimple<A, S>
+        : T extends ReducerCreatorWithCtx<infer A, infer S, infer C1> ? ReducerCreator<A, S, CtxBuilderToCtxUnion<C, C1>>
+        : T extends (...args: any[]) => Object ? (...args: any[]) => ActionMapWithCtx<ReturnType<T>, C>
+            : { [K in keyof T]: ActionWithCtx<T[K], C> }
 
 export type ActionMapWithCtx<M, C> = ActionWithCtx<M, C>
 
@@ -93,10 +121,10 @@ export type Without<C1, C> = Exclude<keyof C1, keyof C> extends never ? void : O
 
 export type UnionOrVoid<A, B> =
     B extends void ?
-    A :
-    A extends void ?
-        B :
-        A & B
+        A :
+        A extends void ?
+            B :
+            A & B
 
 export function updateState<S, K extends IndexType<S>>(state: S, key: K, subState: StatePart<S, K>) {
     if (Array.isArray(state)) {

@@ -1,76 +1,212 @@
-import {actionsOf} from "./actions";
+import {actionsWithContext} from "./actions";
 import {
-    ActionMapToCtx,
+    ActionMapToCtxIntersection,
+    ActionMapWithState,
     Effect,
-    Executor, Reducer,
-    ReducerCreator
+    Executor,
+    Reducer,
+    ReducerHandler,
+    ReducerWithContext
 } from "./core";
+import {excludeKey, hasKey} from "./typesChecks";
 
 
-test("Context and effects typing experiments", () => {
+type A = { a: number }
+type B = { b: string }
+type C = { c: string }
+type D = { d: string }
 
-    type UnionToIntersection<U> =
-        (U extends any ? (k: U) => void : never) extends ((k: infer I) => void) ? I : never
+type ReducerToCtx<R> = R extends ReducerWithContext<infer S, infer C> ? C : void
 
-
-    type ActionsMapToReducerCreator<M> = M extends Object ?
-        M[keyof M]
-        : M extends (...args: any) => infer M2 ?
-            M2[keyof M2]
-            : never
-
-    type ReducerCreatorToCtx<R> = R extends ReducerCreator<infer A, infer S, infer C> ? C : never
-
-    type ActionsMapToContextIntersection<M> = UnionToIntersection<ReducerCreatorToCtx<ActionsMapToReducerCreator<M>>>
-
-    let truc = {
-        test: () => (state: number, exec: Executor<number, A>) => state,
-        test2: () => (state: number, exec: Executor<number, B>) => state,
-    }
-
-    let ctxIntersection: ActionsMapToContextIntersection<typeof truc> = {a: 1, b: "test"};
-    ctxIntersection.a;
-    ctxIntersection.b;
-
-    type A = { a: number }
-    type B = { b: string }
-
-    let sub = actionsOf<number, void>()({
-        decrement: () => state => state - 1
-    })
-
-    let actions = ({
-        increment: () => (state: number, exe: Executor<number, A>) => {
-            return state + 1
-        },
-
-        test: () => (state: number, exe: Executor<number, A & B>) => {
-            // actions.increment()(state, exe)
-            return state + 1
-        },
-    })
+function getCtx<R>(r: R): ReducerToCtx<R> {
+    return null;
+}
 
 
-    let ctx: ActionMapToCtx<typeof actions> = {a:1};
-    ctx.a
-
-    //Should compile. ctx should contain the intersection of all context, but contains only the union
-    // ctx.b
-
-    let ctxUnion: ActionsMapToContextIntersection<typeof actions> = {a: 1, b: "test"};
-    ctxUnion.a;
-    ctxUnion.b;
+test("", () => {
 
 
+
+
+    let executorA: Executor<number, A> = null;
     let executorAB: Executor<number, A & B> = null;
 
     let effect: Effect<number, A> = null;
 
-    // should compile
-    // executorAB(effect)
+    // effect(0, null as A & B)
 
-    let reducerA: Reducer<number, A> = (() => {}) as any;
+
+    executorA(effect)
+    executorA(null as Effect<number, A & B>)
+    executorAB(effect as Effect<number, A>)
+
+    let reducerA: Reducer<number, A> = (() => {
+    }) as any;
     reducerA(0, executorAB)
+})
+
+
+test("action map to context", () => {
+
+    let ctxMap: ActionMapToCtxIntersection<typeof map> = null;
+    hasKey(ctxMap, "a")
+    hasKey(ctxMap, "b")
+    hasKey(ctxMap, "c")
+    excludeKey(ctxMap, "other")
+})
+
+type State = { a: string }
+
+let map = {
+    ab: () => (state: State, executor: Executor<State, A & B>) => state,
+    a: () => (state: State, executor: Executor<State, A>) => state,
+    c: () => (state: State, executor: Executor<State, C>) => state,
+    empty: () => (state: State, executor: Executor<State>) => state,
+    noEffect: () => (state: State) => state,
+    subFn: (arg: number) => ({
+        ab: () => (state: State, executor: Executor<State, A & B>) => state,
+        a: () => (state: State, executor: Executor<State, A>) => state,
+        c: () => (state: State, executor: Executor<State, C>) => state,
+        empty: () => (state: State, executor: Executor<State>) => state,
+        noEffect: () => (state: State) => state,
+    }),
+    subObj: {
+        ab: () => (state: State, executor: Executor<State, A & B>) => state,
+        a: () => (state: State, executor: Executor<State, A>) => state,
+        c: () => (state: State, executor: Executor<State, C>) => state,
+        empty: () => (state: State, executor: Executor<State>) => state,
+        noEffect: () => (state: State) => state,
+    }
+}
+
+test("actionsWithContext types", () => {
+
+
+    const state = {a: "test"};
+
+    const ctxPart = {b: "test"};
+    let mapWithContext = actionsWithContext(ctxPart, map);
+
+    mapWithContext.noEffect()(state)
+
+
+    hasKey(getCtx(mapWithContext.a()), "a")
+    excludeKey(getCtx(mapWithContext.a()), "b")
+    excludeKey(getCtx(mapWithContext.a()), "c")
+
+    hasKey(getCtx(mapWithContext.ab()), "a")
+    excludeKey(getCtx(mapWithContext.ab()), "b")
+    excludeKey(getCtx(mapWithContext.ab()), "c")
+
+    excludeKey(getCtx(mapWithContext.c()), "a")
+    excludeKey(getCtx(mapWithContext.c()), "b")
+    hasKey(getCtx(mapWithContext.c()), "c")
+
+    excludeKey(getCtx(mapWithContext.empty()), "a")
+    excludeKey(getCtx(mapWithContext.empty()), "b")
+    excludeKey(getCtx(mapWithContext.empty()), "c")
+
+    excludeKey(getCtx(mapWithContext.noEffect()), "a")
+    excludeKey(getCtx(mapWithContext.noEffect()), "b")
+    excludeKey(getCtx(mapWithContext.noEffect()), "c")
+
+    hasKey(getCtx(mapWithContext.subFn(0).a()), "a")
+    excludeKey(getCtx(mapWithContext.subFn(0).a()), "b")
+    excludeKey(getCtx(mapWithContext.subFn(0).a()), "c")
+
+    hasKey(getCtx(mapWithContext.subFn(0).ab()), "a")
+    excludeKey(getCtx(mapWithContext.subFn(0).ab()), "b")
+    excludeKey(getCtx(mapWithContext.subFn(0).ab()), "c")
+
+    excludeKey(getCtx(mapWithContext.subFn(0).c()), "a")
+    excludeKey(getCtx(mapWithContext.subFn(0).c()), "b")
+    hasKey(getCtx(mapWithContext.subFn(0).c()), "c")
+
+    excludeKey(getCtx(mapWithContext.subFn(0).noEffect()), "a")
+    excludeKey(getCtx(mapWithContext.subFn(0).noEffect()), "b")
+    excludeKey(getCtx(mapWithContext.subFn(0).noEffect()), "c")
+
+    hasKey(getCtx(mapWithContext.subObj.a()), "a")
+    excludeKey(getCtx(mapWithContext.subObj.a()), "b")
+    excludeKey(getCtx(mapWithContext.subObj.a()), "c")
+
+    hasKey(getCtx(mapWithContext.subObj.ab()), "a")
+    excludeKey(getCtx(mapWithContext.subObj.ab()), "b")
+    excludeKey(getCtx(mapWithContext.subObj.ab()), "c")
+
+    excludeKey(getCtx(mapWithContext.subObj.c()), "a")
+    excludeKey(getCtx(mapWithContext.subObj.c()), "b")
+    hasKey(getCtx(mapWithContext.subObj.c()), "c")
+
+    excludeKey(getCtx(mapWithContext.subObj.noEffect()), "a")
+    excludeKey(getCtx(mapWithContext.subObj.noEffect()), "b")
+    excludeKey(getCtx(mapWithContext.subObj.noEffect()), "c")
+
+
+})
+
+
+
+test("actionsWithState types", () => {
+
+
+    let mapWithState: ActionMapWithState<typeof map, string> = null;
+
+
+    mapWithState.noEffect()("test")
+
+
+    hasKey(getCtx(mapWithState.a()), "a")
+    excludeKey(getCtx(mapWithState.a()), "b")
+    excludeKey(getCtx(mapWithState.a()), "c")
+
+    hasKey(getCtx(mapWithState.ab()), "a")
+    hasKey(getCtx(mapWithState.ab()), "b")
+    excludeKey(getCtx(mapWithState.ab()), "c")
+
+    excludeKey(getCtx(mapWithState.c()), "a")
+    excludeKey(getCtx(mapWithState.c()), "b")
+    hasKey(getCtx(mapWithState.c()), "c")
+
+    excludeKey(getCtx(mapWithState.empty()), "a")
+    excludeKey(getCtx(mapWithState.empty()), "b")
+    excludeKey(getCtx(mapWithState.empty()), "c")
+
+    excludeKey(getCtx(mapWithState.noEffect()), "a")
+    excludeKey(getCtx(mapWithState.noEffect()), "b")
+    excludeKey(getCtx(mapWithState.noEffect()), "c")
+
+    hasKey(getCtx(mapWithState.subFn(0).a()), "a")
+    excludeKey(getCtx(mapWithState.subFn(0).a()), "b")
+    excludeKey(getCtx(mapWithState.subFn(0).a()), "c")
+
+    hasKey(getCtx(mapWithState.subFn(0).ab()), "a")
+    hasKey(getCtx(mapWithState.subFn(0).ab()), "b")
+    excludeKey(getCtx(mapWithState.subFn(0).ab()), "c")
+
+    excludeKey(getCtx(mapWithState.subFn(0).c()), "a")
+    excludeKey(getCtx(mapWithState.subFn(0).c()), "b")
+    hasKey(getCtx(mapWithState.subFn(0).c()), "c")
+
+    excludeKey(getCtx(mapWithState.subFn(0).noEffect()), "a")
+    excludeKey(getCtx(mapWithState.subFn(0).noEffect()), "b")
+    excludeKey(getCtx(mapWithState.subFn(0).noEffect()), "c")
+
+    hasKey(getCtx(mapWithState.subObj.a()), "a")
+    excludeKey(getCtx(mapWithState.subObj.a()), "b")
+    excludeKey(getCtx(mapWithState.subObj.a()), "c")
+
+    hasKey(getCtx(mapWithState.subObj.ab()), "a")
+    hasKey(getCtx(mapWithState.subObj.ab()), "b")
+    excludeKey(getCtx(mapWithState.subObj.ab()), "c")
+
+    excludeKey(getCtx(mapWithState.subObj.c()), "a")
+    excludeKey(getCtx(mapWithState.subObj.c()), "b")
+    hasKey(getCtx(mapWithState.subObj.c()), "c")
+
+    excludeKey(getCtx(mapWithState.subObj.noEffect()), "a")
+    excludeKey(getCtx(mapWithState.subObj.noEffect()), "b")
+    excludeKey(getCtx(mapWithState.subObj.noEffect()), "c")
 
 
 })
