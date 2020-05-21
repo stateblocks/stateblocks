@@ -2,8 +2,7 @@ import {
     ActionMap,
     ActionMapToCtx,
     ActionMapToMethodMap,
-    ActionMapToState,
-    ActionMapWithCtx,
+    ActionMapToState, ActionMapWithCtx,
     ActionMapWithReducer,
     ActionMapWithState,
     ContextToActionMap,
@@ -89,7 +88,7 @@ export function actionsWithListener<M, C, S>(listener: Reducer<S, C>, actions: M
 
 export type ContextBuilder<C0, C1, S> = (ctxIn: C0, handler: ReducerHandler<S, C0>) => C1
 
-type CtxBuilderToCtxUnion<CB, MC> = CB extends (ctxIn: infer C0) => infer C ?
+export type CtxBuilderToCtxUnion<CB, MC> = CB extends (ctxIn: infer C0) => infer C ?
     UnionOrVoid<C0, Without<MC, C>>
     :
     CB extends ContextBuilder<infer C0, infer C, infer S> ?
@@ -99,7 +98,7 @@ type CtxBuilderToCtxUnion<CB, MC> = CB extends (ctxIn: infer C0) => infer C ?
 
 
 export function actionsWithContext<CB, M>(ctxOrFunction: CB, actions: M):
-    ActionMapWithCtx<M, CtxBuilderToCtxUnion<CB, ActionMapToCtx<M>>> {
+    ActionMapWithCtx<M, CB> {
     if (typeof ctxOrFunction == "function") {
         // @ts-ignore
         return mapActionsReducers(reducerWithContextBuilderPart2(ctxOrFunction), actions)
@@ -183,7 +182,7 @@ const createScopedActionMap: <S>() => <M>(actions: M) => (key: IndexType<S>) => 
                 // @ts-ignore
                 mapActionsReducers(scopeReducer<S>(key), actions) as ActionMapWithState<M, S>;
 
-
+//TODO on peut implémenter cette fonction avec scopeAction si on fournit un contexte builder avec l'actionMap
 export function scopeActionsWithCtxBuilder<S, C1, C2>(ctxBuilder: (key: IndexType<S>, state: S, handler: ReducerHandler<S, C1>, ctxIn: C1) => C2)
     : <M>(actions: M) => (key: IndexType<S>) => ActionMapWithCtx<ActionMapWithState<M, S>, C1> {
     let effectWrapper = (key: IndexType<S>) => (effect: Effect<S, C2>) => (state: S, handler: ReducerHandler<S, C1>, ctx: C1) => {
