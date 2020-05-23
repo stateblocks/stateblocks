@@ -31,7 +31,7 @@ test("wrap effect with action context", () => {
     let createTestHandler = <C>(ctx: C): ReducerHandler<State, C> => {
         let store = new Store(0)
         return (reducer: Reducer<State, C>) => {
-            const reducerWithContent: Reducer<State> = mapReducerExecutorContext(mapExecutorEffect(mapEffectContext<State, void, C>(() => ctx)))(reducer);
+            const reducerWithContent: Reducer<State> = mapReducerExecutorContext(mapExecutorEffect(mapEffectContext<State, {}, C>(() => ctx)))(reducer);
             let promise = store.update(reducerWithContent)
             expect(store.state).toBe(1)
             return promise;

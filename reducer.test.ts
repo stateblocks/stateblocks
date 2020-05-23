@@ -6,7 +6,7 @@ import {
     actionsWithContextValue,
     actionsWithContextBuilderPart,
     actionsWithContextPart,
-    actionsWithContext,
+    provideContext,
     chainActions,
     composeActions,
     scopeActions,
@@ -46,7 +46,7 @@ test("simple actions with context", async () => {
 
 
     let actions2: ActionMapWithCtx<typeof actions, { baz: () => void }> = actionsWithContextPart({bar}, actions)
-    let actions3: ActionMapWithCtx<typeof actions, void> = actionsWithContextPart({baz}, actions2)
+    let actions3: ActionMapWithCtx<typeof actions, {}> = actionsWithContextPart({baz}, actions2)
 
     store = new Store(0);
     await store.update(actions3.foo());
@@ -180,7 +180,7 @@ test("complex actions with context", async () => {
 
     const actions4: ActionMapWithCtx<typeof actions, { bar: () => void, baz: () => void }> = actionsWithActionsContextPart(fooActionCtx, actions);
     const actions5: ActionMapWithCtx<typeof actions, { bar: () => void }> = actionsWithContextBuilderPart(bazCtxBuilder, actions4);
-    const actions6: ActionMapWithCtx<typeof actions, void> = actionsWithContextPart(barCtx, actions5);
+    const actions6: ActionMapWithCtx<typeof actions, {}> = actionsWithContextPart(barCtx, actions5);
 
     let store = new Store(0);
     await store.update(actions6.test());
@@ -281,9 +281,9 @@ test("complex actions with context universal", async () => {
         });
 
 
-        const actionsWithFoo: ActionMapWithCtx<typeof actions, Bar & Baz> = actionsWithContext(contextWithActions(fooActionCtx), actions);
-        const actionsWithFooBaz: ActionMapWithCtx<typeof actions, Bar> = actionsWithContext(bazCtxBuilder, actionsWithFoo);
-        const actionsWithFullContext: ActionMapWithCtx<typeof actions, void> = actionsWithContext(barCtx, actionsWithFooBaz);
+        const actionsWithFoo: ActionMapWithCtx<typeof actions, Bar & Baz> = provideContext(contextWithActions(fooActionCtx), actions);
+        const actionsWithFooBaz: ActionMapWithCtx<typeof actions, Bar> = provideContext(bazCtxBuilder, actionsWithFoo);
+        const actionsWithFullContext: ActionMapWithCtx<typeof actions, {}> = provideContext(barCtx, actionsWithFooBaz);
         return {actionsWithFullContext, foo, bar, baz}
     }
 
@@ -337,13 +337,13 @@ test("types : actions with context universal", () => {
         .increment()(0, null as Executor<number, A & B>)
 
     const ctxBuilder = contextWithActions(contextActions);
-    actionsWithContext(ctxBuilder, actions)
+    provideContext(ctxBuilder, actions)
         .increment()(0, null as Executor<number, A & B>)
 
     /**
      * Provide context part builder with input arg
      */
-    let newActions1 = actionsWithContext((arg: { input: string }) => ({
+    let newActions1 = provideContext((arg: { input: string }) => ({
         a: "test",
     }), actions)
 
@@ -352,7 +352,7 @@ test("types : actions with context universal", () => {
     /**
      * Provide full context builder without arg
      */
-    let newActions2 = actionsWithContext(() => ({
+    let newActions2 = provideContext(() => ({
         a: "test",
         b: 1,
         c: () => {
@@ -365,7 +365,7 @@ test("types : actions with context universal", () => {
     /**
      * Provide full context builder with arg
      */
-    let newActions3 = actionsWithContext((ctxParent: { d: number }) => ({
+    let newActions3 = provideContext((ctxParent: { d: number }) => ({
         a: "test",
         b: 1,
     }), actions)
@@ -374,7 +374,7 @@ test("types : actions with context universal", () => {
     /**
      * Provide full context object
      */
-    let newActions4 = actionsWithContext({
+    let newActions4 = provideContext({
         a: "test",
         b: 1,
     }, actions)
@@ -383,7 +383,7 @@ test("types : actions with context universal", () => {
     /**
      * Provide part context object
      */
-    let newActions5 = actionsWithContext({
+    let newActions5 = provideContext({
         a: "test",
     }, actions)
     let action5: Reducer<number, { b: number }> = newActions5.increment()
@@ -398,7 +398,7 @@ test("add context to scoped action", async () => {
     };
 
     let subActions = {
-        setValue: (count: number) => (state: number, executor: Executor<number, ContextType>): number => {
+        addValue: (count: number) => (state: number, executor: Executor<number, ContextType>): number => {
             executor((state, handler, ctx) => {
                 ctx.foo("run effect");
             });
@@ -463,7 +463,7 @@ let testActions = {
 };
 
 function createNoopExecutor<S>() {
-    return (effect: Effect<S, void>) => {
+    return (effect: Effect<S>) => {
 
     };
 }
@@ -658,7 +658,7 @@ test("use context builder in scoped action", async () => {
         console.log(arg)
     });
 
-    var actionsWithContext1 = scopeActionsWithCtxBuilder<number[], void, ContextType>((key, state, handler, ctx: void) => ({
+    var actionsWithContext1 = scopeActionsWithCtxBuilder<number[], {}, ContextType>((key, state, handler, ctx) => ({
         foo: (arg: string) => {
             mockCallback(arg + " from " + key)
         }
@@ -826,7 +826,7 @@ test("handle reducer in effect", async () => {
     }
 
     let interval: NodeJS.Timeout;
-    const effect: Effect<number, void> = async (state, handler, ctx) => {
+    const effect: Effect<number> = async (state, handler, ctx) => {
         interval = setInterval(() => {
             let newState: number = null;
             handler(state => {

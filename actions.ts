@@ -97,7 +97,7 @@ export type CtxBuilderToCtxUnion<CB, MC> = CB extends (ctxIn: infer C0) => infer
         Without<MC, CB>
 
 
-export function actionsWithContext<CB, M>(ctxOrFunction: CB, actions: M):
+export function provideContext<CB, M>(ctxOrFunction: CB, actions: M):
     ActionMapWithCtxBuilder<M, CB> {
     if (typeof ctxOrFunction == "function") {
         // @ts-ignore
@@ -111,7 +111,7 @@ export function actionsWithContext<CB, M>(ctxOrFunction: CB, actions: M):
 
 //TODO : on ne vérifie pas que les actions prennent le bon contexte
 export function actionsWithContextValue<M>(ctx: ActionMapToCtx<M>, actions: M)
-    : ActionMapWithCtx<M, void> {
+    : ActionMapWithCtx<M, {}> {
     // @ts-ignore
     return mapActionsReducers(_reducerWithContext(ctx), actions)
 }
@@ -123,7 +123,7 @@ export function actionsWithContextBuilder<M, C, C0>(ctxBuilder: (ctxIn: C0) => C
 }
 
 export function actionsWithContextActions<M, C extends FunctionsContext>(ctxAction: ContextToActionMap<C>, actions: M)
-    : ActionMapWithCtx<M, void> {
+    : ActionMapWithCtx<M, {}> {
     // @ts-ignore
     return mapActionsReducers(reducerWithActionsContext(ctxAction), actions)
 }
@@ -183,7 +183,7 @@ const createScopedActionMap: <S>() => <M>(actions: M) => (key: IndexType<S>) => 
                 mapActionsReducers(scopeReducer<S>(key), actions) as ActionMapWithState<M, S>;
 
 //TODO on peut implémenter cette fonction avec scopeAction si on fournit un contexte builder avec l'actionMap
-export function scopeActionsWithCtxBuilder<S, C1, C2>(ctxBuilder: (key: IndexType<S>, state: S, handler: ReducerHandler<S, C1>, ctxIn: C1) => C2)
+export function scopeActionsWithCtxBuilder<S, C1 extends {}, C2 extends {}>(ctxBuilder: (key: IndexType<S>, state: S, handler: ReducerHandler<S, C1>, ctxIn: C1) => C2)
     : <M>(actions: M) => (key: IndexType<S>) => ActionMapWithCtx<ActionMapWithState<M, S>, C1> {
     let effectWrapper = (key: IndexType<S>) => (effect: Effect<S, C2>) => (state: S, handler: ReducerHandler<S, C1>, ctx: C1) => {
         assertObject(state);

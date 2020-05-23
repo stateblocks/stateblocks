@@ -1,4 +1,4 @@
-import {actionsWithContext} from "./actions";
+import {provideContext} from "./actions";
 import {
     ActionMapToCtxIntersection,
     ActionMapWithState,
@@ -23,27 +23,6 @@ function getCtx<R>(r: R): ReducerToCtx<R> {
 }
 
 
-test("", () => {
-
-
-
-
-    let executorA: Executor<number, A> = null;
-    let executorAB: Executor<number, A & B> = null;
-
-    let effect: Effect<number, A> = null;
-
-    // effect(0, null as A & B)
-
-
-    executorA(effect)
-    executorA(null as Effect<number, A & B>)
-    executorAB(effect as Effect<number, A>)
-
-    let reducerA: Reducer<number, A> = (() => {
-    }) as any;
-    reducerA(0, executorAB)
-})
 
 
 test("action map to context", () => {
@@ -85,7 +64,7 @@ test("actionsWithContext types", () => {
     const state = {a: "test"};
 
     const ctxPart = {b: "test"};
-    let mapWithContext = actionsWithContext(ctxPart, map);
+    let mapWithContext = provideContext(ctxPart, map);
 
     mapWithContext.noEffect()(state)
 
@@ -150,10 +129,10 @@ test("actionsWithContext types", () => {
 test("actionsWithState types", () => {
 
 
-    let mapWithState: ActionMapWithState<typeof map, string> = null;
+    let mapWithState: ActionMapWithState<typeof map, string> = map as any;
 
 
-    mapWithState.noEffect()("test")
+    const noEffectReducer = mapWithState.noEffect()("test"); // effect doesn't need executor
 
 
     hasKey(getCtx(mapWithState.a()), "a")

@@ -11,8 +11,8 @@ import {
     Without,
 } from "./core";
 
-export function wrapEffectWithActionsMap<S, M>(actions: M): (effect: Effect<S, ActionMapToMethodMap<M>>) => Effect<S, void> {
-    let ctxMapper = <S, C1>(ctx: void, handler: ReducerHandler<S>): ActionMapToMethodMap<M> => {
+export function wrapEffectWithActionsMap<S, M>(actions: M): (effect: Effect<S, ActionMapToMethodMap<M>>) => Effect<S> {
+    let ctxMapper = <S, C1>(ctx: {}, handler: ReducerHandler<S>): ActionMapToMethodMap<M> => {
         return handleActionMap(handler, actions);
     }
     return mapEffectContext(ctxMapper);
