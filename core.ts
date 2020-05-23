@@ -1,10 +1,10 @@
 import {CtxBuilderToCtxUnion} from "./actions";
 
-export type Reducer<S, C = void> = ReducerWithContext<S, C>
+export type Reducer<S, C extends {} = {}> = ReducerWithContext<S, C>
 
 export type ReducerSimple<S> = (state: S) => S
 
-export type ReducerWithContext<S, C> = (state: S, executor: Executor<S, C>) => S
+export type ReducerWithContext<S, C extends {} = {}> = (state: S, executor: Executor<S, C>) => S
 
 /**
  * An executor is a function taking an effect to execute. The effect may require a part of the executor context,
@@ -12,20 +12,20 @@ export type ReducerWithContext<S, C> = (state: S, executor: Executor<S, C>) => S
  * TODO : executor should accept effects that require less context than C, but should provide all context to effects without explicit typing.
  *
  */
-export type Executor<S, C = void> = (effect: Effect<S, C>) => void;
+export type Executor<S, C extends {} = {}> = (effect: Effect<S, C>) => void;
 
-export type Effect<S, C = void> = (state: S, handler: ReducerHandler<S, C>, ctx: C) => Promise<void> | void;
+export type Effect<S, C extends {} = {}> = (state: S, handler: ReducerHandler<S, C>, ctx: C) => Promise<void> | void;
 // export type Effect<S, C = void> = (state: S, handler: (reducer: ((state: S, executor: Executor<S, C>) => S) | ((state: S, executor: Executor<S, void>) => S) | ((state: S) => S)) => Promise<void>, ctx: C) => Promise<void> | void;
 
-export type ReducerCreator<A extends any[], S, C = void> = (...args: A) => Reducer<S, C>
+export type ReducerCreator<A extends any[], S, C extends {} = {}> = (...args: A) => Reducer<S, C>
 
-export type ReducerCreatorWithCtx<A extends any[], S, C = void> = (...args: A) => ReducerWithContext<S, C>
+export type ReducerCreatorWithCtx<A extends any[], S, C extends {} = {}> = (...args: A) => ReducerWithContext<S, C>
 
 export type ReducerCreatorSimple<A extends any[], S> = (...args: A) => ReducerSimple<S>
 
-export type ReducerHandler<S, C = void> = (reducer: Reducer<S, C>) => Promise<void>
+export type ReducerHandler<S, C extends {} = {}> = (reducer: Reducer<S, C>) => Promise<void>
 
-export type ReducerCreatorWithoutContext<R> = R extends ReducerCreator<infer A, infer S, infer C> ? ReducerCreator<A, S, void> : never
+export type ReducerCreatorWithoutContext<R> = R extends ReducerCreator<infer A, infer S, infer C> ? ReducerCreator<A, S> : never
 
 export type ContextEraser<R> = (action: R) => ReducerCreatorWithoutContext<R>
 
@@ -97,7 +97,7 @@ type ActionWithCtx<T, C> = T extends ReducerCreator<infer A, infer S, infer C1> 
         (...args: any[]) => ActionMapWithCtx<ReturnType<T>, C>
         : { [K in keyof T]: ActionWithCtx<T[K], C> }
 
-export type ActionMapWithCtx<M, C> = ActionWithCtx<M, C>
+export type ActionMapWithCtx<M, C extends {}> = ActionWithCtx<M, C>
 
 
 type ActionWithCtxBuilder<T, C> =
@@ -127,7 +127,7 @@ type AsActionMapItem<T> = T extends ReducerCreator<infer A, infer S, infer C> ?
 type AsActionMap<M> = { [K in keyof M]: AsActionMapItem<M[K]> }
 
 
-export type Without<C1, C> = Exclude<keyof C1, keyof C> extends never ? void : Omit<C1, keyof C>
+export type Without<C1, C> = Exclude<keyof C1, keyof C> extends never ? {} : Omit<C1, keyof C>
 
 export type UnionOrVoid<A, B> =
     B extends void ?

@@ -15,3 +15,12 @@ export function excludeKey<T, U extends string>(arg: T, exclude: Exclude<U, keyo
 export function hasKey<T, U extends keyof T>(arg: T, exclude: U): any {
     return null;
 }
+
+export function excludeFuncParams<F extends (...args: any) => any, T1, T2, T3>(
+    func: F,
+    arg1: Exclude<T1, Parameters<F>[0]>,
+    arg2?: Exclude<T2, Parameters<F>[1]>,
+    arg3?: Exclude<T3, Parameters<F>[2]>
+) {
+
+}
