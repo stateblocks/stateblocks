@@ -4,7 +4,7 @@ export type Reducer<S, C = void> = ReducerWithContext<S, C>
 
 export type ReducerSimple<S> = (state: S) => S
 
-export type ReducerWithContext<S, C> = (state: S, executor: (effect: Effect<S, C>) => void) => S
+export type ReducerWithContext<S, C> = (state: S, executor: Executor<S, C>) => S
 
 /**
  * An executor is a function taking an effect to execute. The effect may require a part of the executor context,
@@ -91,13 +91,23 @@ export type ActionMapWithState<M, S> = ActionWithState<M, S>
 
 // type ActionWithState<T, S> = { [K in keyof T]: T[K] extends ReducerCreator<infer A, infer S1, infer C> ? ReducerCreator<A, S, C> : void }
 
-type ActionWithCtx<T, C> =
-    T extends ReducerCreatorSimple<infer A, infer S> ? ReducerCreatorSimple<A, S>
-        : T extends ReducerCreatorWithCtx<infer A, infer S, infer C1> ? ReducerCreator<A, S, CtxBuilderToCtxUnion<C, C1>>
-        : T extends (...args: any[]) => Object ? (...args: any[]) => ActionMapWithCtx<ReturnType<T>, C>
-            : { [K in keyof T]: ActionWithCtx<T[K], C> }
+type ActionWithCtx<T, C> = T extends ReducerCreator<infer A, infer S, infer C1> ?
+    ReducerCreator<A, S, C>
+    : T extends (...args: any[]) => Object ?
+        (...args: any[]) => ActionMapWithCtx<ReturnType<T>, C>
+        : { [K in keyof T]: ActionWithCtx<T[K], C> }
 
 export type ActionMapWithCtx<M, C> = ActionWithCtx<M, C>
+
+
+type ActionWithCtxBuilder<T, C> =
+    T extends ReducerCreatorSimple<infer A, infer S> ? ReducerCreatorSimple<A, S>
+        : T extends ReducerCreatorWithCtx<infer A, infer S, infer C1> ? ReducerCreator<A, S, CtxBuilderToCtxUnion<C, C1>>
+        : T extends (...args: any[]) => Object ? (...args: any[]) => ActionMapWithCtxBuilder<ReturnType<T>, C>
+            : { [K in keyof T]: ActionWithCtxBuilder<T[K], C> }
+
+export type ActionMapWithCtxBuilder<M, C> = ActionWithCtxBuilder<M, C>
+
 
 type ActionWithReducer<T, R1, R2> = T extends (...args: infer A) => R1 ?
     (...args: A) => R2
