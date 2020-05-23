@@ -2,7 +2,7 @@ import {
     ActionMap,
     ActionMapToCtx,
     ActionMapToMethodMap,
-    ActionMapToState, ActionMapWithCtx,
+    ActionMapToState, ActionMapWithCtx, ActionMapWithCtxBuilder,
     ActionMapWithReducer,
     ActionMapWithState,
     ContextToActionMap,
@@ -98,7 +98,7 @@ export type CtxBuilderToCtxUnion<CB, MC> = CB extends (ctxIn: infer C0) => infer
 
 
 export function actionsWithContext<CB, M>(ctxOrFunction: CB, actions: M):
-    ActionMapWithCtx<M, CB> {
+    ActionMapWithCtxBuilder<M, CB> {
     if (typeof ctxOrFunction == "function") {
         // @ts-ignore
         return mapActionsReducers(reducerWithContextBuilderPart2(ctxOrFunction), actions)
