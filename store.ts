@@ -2,6 +2,8 @@ import {ActionMapToMethodMap, Effect, Reducer} from "./core";
 import {handleActionMap} from "./handlers";
 
 
+const voidContext = {};
+
 /**
  * Holds a state and accepts reducer to update the state.
  * Runs side effects if required by reducers.
@@ -35,10 +37,10 @@ export class Store<S> {
         this.update = this.update.bind(this)
     }
 
-    async update(action: Reducer<S, void>): Promise<void> {
-        let effects: Effect<S, void>[] = [];
+    async update(action: Reducer<S>): Promise<void> {
+        let effects: Effect<S>[] = [];
         let reducerRunning = true;
-        let newState = action(this.state, (effect: Effect<S, void>) => {
+        let newState = action(this.state, (effect: Effect<S>) => {
             if (!reducerRunning) {
                 throw "Reducer execution finished. Can't accept effects";
             }
@@ -62,7 +64,7 @@ export class Store<S> {
         if (effects.length) {
             for (let effect of effects) {
                 this.inEffect++;
-                let effectPromise = effect(this.state, this.update);
+                let effectPromise = effect(this.state, this.update, voidContext);
                 effectPromises.push(effectPromise);
                 this.inEffect--;
             }
@@ -82,6 +84,15 @@ export class Store<S> {
         this.listener = listener;
     }
 }
+
+/**
+ * Redux-like store creator
+ * @param initialState
+ */
+export function createStore<S>(initialState:S):Store<S>{
+    return new Store<S>(initialState)
+}
+
 
 export class StoreWithActions<S, A> extends Store<S> {
 
