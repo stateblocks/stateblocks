@@ -3,6 +3,14 @@ TODO
 
 - composition and reuse
 - context for effects
+- actions in context
+- derived state
+- composition in reducer : use reducer in reducer
+- context from parent context
+- handleActionMap
+- composition du state au meme niveau
+- Promise in effects and handlers and update
+
 
 
 ## Requirements
