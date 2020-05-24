@@ -420,7 +420,7 @@ test("add context to scoped action", async () => {
     var actionsWithContext1 = actionsWithContextValue(counterContext, actions);
 
     var store = new Store({"scope": 0});
-    await store.update(actionsWithContext1.scope.setValue(3));
+    await store.update(actionsWithContext1.scope.addValue(3));
     expect(store.state).toEqual({"scope": 3});
     expect(mockCallback.mock.calls.length).toBe(1);
     expect(mockCallback.mock.calls[0][0]).toBe("run effect");
