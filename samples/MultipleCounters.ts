@@ -3,9 +3,9 @@ import {
     ReducerHandler,
 } from "../core";
 import {Counter, CounterState} from "./Counter";
-import {actionsWithContext, actionsWithListener, scopeActions} from "../actions";
+import {actionsWithListener, provideContext, scopeActions} from "../actions";
 import {handleActionMap} from "../handlers";
-import {contextWithActions} from "../effects";
+import {contextWithActions} from "../context";
 
 
 export type MultipleCountersState = {
@@ -50,7 +50,7 @@ export const App = {
 
         counterActions(idx: number) {
 
-            let counterActions = actionsWithContext(contextWithActions({
+            let counterActions = provideContext(contextWithActions({
                 onReset: (count: number) => App.actions.onCounterReset(idx, count)
             }), scopeActions<MultipleCountersState>("counters")(scopeActions<CounterState[]>(idx)( Counter.actions)));
             // return counterActions;
@@ -67,7 +67,7 @@ export const App = {
         },
 
         top() {
-            return actionsWithContext(contextWithActions({
+            return provideContext(contextWithActions({
                 onReset(count: number) {
                     return App.actions.onCounterReset(-1, count);
                 }
@@ -76,7 +76,7 @@ export const App = {
 
         //TODO : si on met pas ca sous forme de fonction le typage de App est circulaire
         bottom() {
-            return actionsWithContext(contextWithActions({
+            return provideContext(contextWithActions({
                 onReset(count: number) {
                     return App.actions.onCounterReset(-1, count);
                 }

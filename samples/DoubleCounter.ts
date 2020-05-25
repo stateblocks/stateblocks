@@ -4,7 +4,7 @@
 
 import {Executor} from "../core";
 import {Counter, CounterState, createMockCounterContext} from "./Counter";
-import {actionsWithContext, scopeActions} from "../actions";
+import {provideContext, scopeActions} from "../actions";
 
 
 type Counters = {
@@ -22,8 +22,8 @@ export function createTwoCounters() {
     const counterContext = createMockCounterContext();
 
     let actions = {
-        top: scopeActions<Counters>("top")(actionsWithContext(counterContext, Counter.actions)),
-        bottom: scopeActions<Counters>("bottom")(actionsWithContext(counterContext, Counter.actions)),
+        top: scopeActions<Counters>("top")(provideContext(counterContext, Counter.actions)),
+        bottom: scopeActions<Counters>("bottom")(provideContext(counterContext, Counter.actions)),
         reset: () => (state: Counters, executor: Executor<Counters>) => {
             state = actions.top.setValue(0)(state, executor);
             state = actions.bottom.setValue(0)(state, executor);
