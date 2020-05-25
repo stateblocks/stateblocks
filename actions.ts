@@ -32,14 +32,6 @@ import {handlerWithContext} from "./handlers";
 import {mapValues as lodashMapValues} from "lodash-es";
 
 
-
-
-export function mapActionsValues<T, U, A>(fn: (arg: T) => U, actions: A): { [key in keyof A]: U } {
-    // console.warn("use mapActionsReducers instead of mapActionsValues");
-    // @ts-ignore
-    return lodashMapValues(actions, fn);
-}
-
 function mapActionsReducers<T, U, A>(reducerTransformer: (reducer: T) => U, actions: A): ActionMapWithReducer<A, T, U> {
     if (typeof actions !== "function") {
         // @ts-ignore

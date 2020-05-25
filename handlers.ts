@@ -1,9 +1,17 @@
 import {mapReducerExecutorContext, mapReducerState, scopeReducer} from "./reducers";
 import {ActionMapToMethodMap, Executor, IndexType, Reducer, ReducerCreator, ReducerHandler, StatePart} from "./core";
 import {memoize2, memoizeN} from "./memo";
-import {mapActionsValues} from "./actions";
 import {mapExecutorEffectContext} from "./executors";
 import {mapEffectContext} from "./effects";
+import {mapValues as lodashMapValues} from "lodash-es";
+
+
+function mapActionsValues<T, U, A>(fn: (arg: T) => U, actions: A): { [key in keyof A]: U } {
+    // TODO : virer lodash
+    // @ts-ignore
+    return lodashMapValues(actions, fn);
+}
+
 
 export function scopeHandler<S, T, K extends IndexType<S>, C>(key: K, handler: ReducerHandler<S, C>): ReducerHandler<StatePart<S, K>, C> {
     return (action: Reducer<StatePart<S, K>, C>) => {
