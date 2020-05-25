@@ -13,7 +13,7 @@ import {
     scopeActionsWithCtxBuilder
 } from "./actions";
 import {handleActionMap} from "./handlers";
-import {contextWithActions} from "./effects";
+import {contextWithActions} from "./context";
 
 
 test("simple actions with context", async () => {
