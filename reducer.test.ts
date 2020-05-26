@@ -664,6 +664,48 @@ test("use context builder in scoped action", async () => {
         }
     }))(subActions);
 
+    // var actionsWithContext1 = scopeActions<number[]>()(subActions, (key, state, handler, ctx) => ({
+    //     foo: (arg: string) => {
+    //         mockCallback(arg + " from " + key)
+    //     }
+    // }))
+
+    var store = new Store([0, 0]);
+    await store.update(actionsWithContext1(0).setValue(3));
+    expect(store.state).toEqual([3, 0]);
+    expect(mockCallback.mock.calls.length).toBe(1);
+    expect(mockCallback.mock.calls[0][0]).toBe("run effect from 0");
+
+    await store.update(actionsWithContext1(1).setValue(2));
+    expect(store.state).toEqual([3, 2]);
+    expect(mockCallback.mock.calls.length).toBe(2);
+    expect(mockCallback.mock.calls[1][0]).toBe("run effect from 1");
+
+});
+
+test("use context builder in scoped action 2", async () => {
+
+    type ContextType = { foo: (arg: string) => void };
+
+    let subActions = {
+        setValue: (count: number) => (state: number, executor: Executor<number, ContextType>): number => {
+            executor((state, handler, ctx) => {
+                ctx.foo("run effect");
+            });
+            return state + count;
+        }
+    };
+
+    let mockCallback = jest.fn(arg => {
+        console.log(arg)
+    });
+
+    var actionsWithContext1 = scopeActions<number[]>()(subActions, (key, state, handler, ctx) => ({
+        foo: (arg: string) => {
+            mockCallback(arg + " from " + key)
+        },
+    }))
+
     var store = new Store([0, 0]);
     await store.update(actionsWithContext1(0).setValue(3));
     expect(store.state).toEqual([3, 0]);

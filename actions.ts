@@ -1,6 +1,6 @@
 import {
     ActionMap,
-    ActionMapToCtx,
+    ActionMapToCtx, ActionMapToCtxIntersection,
     ActionMapToMethodMap,
     ActionMapToState,
     ActionMapWithCtx,
@@ -124,7 +124,6 @@ export function actionsWithContextActions<M, C extends FunctionsContext>(ctxActi
 
 export function actionsWithContextPart<M, C>(ctx: C, actions: M)
     : ActionMapWithCtx<M, OmitPart<ActionMapToCtx<M>, C>> {
-    //TODO : si on implémente tout le context, le reducer n'est pas un Reducer<S, void>
     // @ts-ignore
     return mapActionsReducers(reducerWithContextPart(ctx), actions)
 }
@@ -142,9 +141,14 @@ export function actionsWithActionsContextPart<CM, M>(ctxActions: CM, actions: M)
     return mapActionsReducers(reducerWithActionsContextPart(ctxActions), actions);
 }
 
-
+/**
+ * This function is curried to be provided with state type parameter without
+ * requiring other types parameters
+ */
 //TODO : permettre de fournir un context builder qui renvoie le contexte correspondant au scope
-export function scopeActions<S>(): <M>(actions: M) => (key: IndexType<S>) => ActionMapWithState<M, S>
+// export function scopeActions<S>(): <M>(actions: M) => (key: IndexType<S>) => ActionMapWithState<M, S>
+export function scopeActions<S>(): <M, C1, C2>(actions: M, ctxBuilder?: ScopedContextBuilder<S, C1, ActionMapToCtxIntersection<M>>)
+    => (key: IndexType<S>) => typeof ctxBuilder extends void ? ActionMapWithState<M, S> : ActionMapWithCtx<ActionMapWithState<M, S>, C1>
 export function scopeActions<S>(key: IndexType<S>): <M>(actions: M) => ActionMapWithState<M, S>
 export function scopeActions<S>(key?: any): any {
     if (key != null) {
@@ -152,7 +156,16 @@ export function scopeActions<S>(key?: any): any {
         // @ts-ignore
         return <M>(actions: M) => mapActionsReducers(scopeReducer<S>(k), actions) as ActionMapWithState<M, S>;
     } else {
-        return createScopedActionMap<S>()
+        // return createScopedActionMap<S>()
+        return <M, C1>(actions: M, ctxBuilder?: ScopedContextBuilder<S, C1, ActionMapToCtxIntersection<M>>) =>
+            (key: IndexType<S>) => {
+                if (ctxBuilder) {
+                    return scopeActionsWithCtxBuilder(ctxBuilder)(actions)(key)
+                } else {
+                    // @ts-ignore
+                    return mapActionsReducers(scopeReducer<S>(key), actions) as ActionMapWithState<M, S>;
+                }
+            }
     }
 }
 
@@ -176,8 +189,10 @@ const createScopedActionMap: <S>() => <M>(actions: M) => (key: IndexType<S>) => 
                 // @ts-ignore
                 mapActionsReducers(scopeReducer<S>(key), actions) as ActionMapWithState<M, S>;
 
+type ScopedContextBuilder<S, C1, C2> = (key: IndexType<S>, state: S, handler: ReducerHandler<S, C1>, ctxIn: C1) => C2
+
 //TODO on peut implémenter cette fonction avec scopeAction si on fournit un contexte builder avec l'actionMap
-export function scopeActionsWithCtxBuilder<S, C1 extends {}, C2 extends {}>(ctxBuilder: (key: IndexType<S>, state: S, handler: ReducerHandler<S, C1>, ctxIn: C1) => C2)
+export function scopeActionsWithCtxBuilder<S, C1 extends {}, C2 extends {}>(ctxBuilder: ScopedContextBuilder<S, C1, C2>)
     : <M>(actions: M) => (key: IndexType<S>) => ActionMapWithCtx<ActionMapWithState<M, S>, C1> {
     let effectWrapper = (key: IndexType<S>) => (effect: Effect<S, C2>) => (state: S, handler: ReducerHandler<S, C1>, ctx: C1) => {
         assertObject(state);
