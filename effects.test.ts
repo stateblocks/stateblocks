@@ -3,7 +3,7 @@ import {Effect, Executor, Reducer, ReducerHandler} from "./core";
 import {Store} from "./store";
 import {mapReducerExecutorContext} from "./reducers";
 import {mapExecutorEffect} from "./executors";
-import {contextWithActions} from "./context";
+import {contextWithActionsPart} from "./context";
 
 function createMockHandler<S, C>():ReducerHandler<S, C>{
     return () => {
@@ -83,7 +83,7 @@ test("types : create context builder from actions", () => {
     let test = () => {
     }
 
-    let context = contextWithActions({
+    let context = contextWithActionsPart({
         increment: () => (state: State, executor: Executor<State, { test: () => void }>) => {
             return state + 1;
         },

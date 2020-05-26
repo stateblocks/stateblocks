@@ -2,11 +2,15 @@
  * Experiments on fluent actions api
  */
 
-import {ActionMap, ActionMapToCtx, Executor, ReducerCreator} from "./core";
+import {
+    ActionMap,
+    Executor,
+    ReducerCreator
+} from "./core";
 import {actionsWithContextPart, actionsWithContextValue} from "./actions";
 
 
-class ActionsModifier<S, C, M extends ActionMap<S, C>> {
+class ActionsModifier<S, C extends {}, M extends ActionMap<S, C>> {
 
     actionsMap: M
 
@@ -14,7 +18,8 @@ class ActionsModifier<S, C, M extends ActionMap<S, C>> {
         this.actionsMap = actionsMap;
     }
 
-    withContext(ctx: ActionMapToCtx<M>) {
+    withContext(ctx: C) {
+        // @ts-ignore
         return actionsWithContextValue(ctx, this.actionsMap)
     }
 
