@@ -104,7 +104,7 @@ store that can work on a list of counters.
 
 #### Context composition
 
-For the double counter actions to work with side effects we need to provide the required context. Context is propagated
+For the double-counter actions to work with side effects we need to provide the required context. Context is propagated
 to children actions when using `provideContext`, but there is no way to determine which sub-counter triggered the effect.
 The `scopeActionsWithContextBuilder` function let us provide a specific context depending on the current scope. 
 

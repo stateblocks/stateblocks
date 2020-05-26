@@ -1,6 +1,5 @@
 import {createStore} from "../store";
 import {provideContext, scopeActions, scopeActionsWithCtxBuilder} from "../actions";
-import {action} from "reason/reasonReact";
 
 test("quickstart", async () => {
 
@@ -259,15 +258,14 @@ test("quickstart", async () => {
 
 
         const arrayActions = {
-            // create a variable-scoped action map
-            counter: scopeActions()(counterActions),
+            counter: scopeActions()(counterActions), // creates a variable-scoped action map
             addCounter: () => (state) => [...state, initialState],
             removeCounter: (index) => (state) => [...state].splice(index, 1)
         }
 
         // The action map now works on a number array
-        arrayActions.counter(3).increment()([initialState, initialState, initialState])
-        // [0,0,1]
+        arrayActions.counter(1).setValue(12)([initialState, initialState, initialState])
+        // [0, 12, 0]
 
         const store = createStore([]);
 
@@ -287,21 +285,20 @@ test("quickstart", async () => {
     //TODO : free substate composition with stateMapper and stateUpdater
 
 
-
     /// [context-builder]
 
 
     // Define a function to provide a counter context depending on current scope.
-    // Returned context can rely on the parent context. We will use functions in parent context that will be provided
-    // later
-    const getChildContext = (scope, state, handler, parentCtx) => ({
+    // Returned context can rely on a parent context that we will provide later
+    const makeCounterCtx = (scope, state, handler, parentCtx) => ({
         save: (value) => {
             parentCtx.saveValue(scope, value);
         },
         load: () => parentCtx.loadValue(scope),
     })
 
-    const counterScoped = scopeActionsWithCtxBuilder(getChildContext)(counterActions)
+    // Wraps effects of counterActions and use makeCounterCtx to provide them with a context depending on the scope
+    const counterScoped = scopeActions()(counterActions, makeCounterCtx)
 
     const doubleActions = {
         top: counterScoped("top"),
@@ -309,7 +306,7 @@ test("quickstart", async () => {
     }
 
     // the sub-actions 'saveAndReset' and 'loadValue' will now dispatch effects that require
-    // a different context to be executed
+    // the parentCtx value we used in makeCounterCtx
     const actionsWithContext = provideContext({
         saveValue: (scope, value) => {
             localStorage.setItem(scope, value);
@@ -336,6 +333,11 @@ test("quickstart", async () => {
 })
 
 test("actions in context", () => {
+
+
+    // scopeState(actions, (key) => (state, handler, ctx) => {
+    //
+    // })
 
 
 })
