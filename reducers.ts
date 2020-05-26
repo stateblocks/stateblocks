@@ -4,15 +4,24 @@ import {
     Effect,
     Executor,
     IndexType,
+    OmitPart,
     Reducer,
     ReducerHandler,
-    StatePart, UnionOrVoid,
-    updateState, Without,
+    StatePart,
+    updateState,
 } from "./core";
-import {_executorWithContext, mapExecutorEffectContext, mapExecutorEffectState} from "./executors";
+import {
+    _executorWithContext,
+    mapExecutorEffectContext,
+    mapExecutorEffectState
+} from "./executors";
 import {assertFunction} from "./asserts";
-import {handleActionMap, handlerWithContext} from "./handlers";
-import {mapEffectContext, mapEffectState, wrapEffectWithActionsMap, wrapEffectWithPartialActionMap} from "./effects";
+import {handlerWithContext} from "./handlers";
+import {
+    mapEffectState,
+    wrapEffectWithActionsMap,
+    wrapEffectWithPartialActionMap
+} from "./effects";
 import {ContextBuilder} from "./actions";
 
 //TODO curry
@@ -22,7 +31,7 @@ export function _reducerWithWrappedEffect<S, C0, C>(effectWrapper: (effect: Effe
 }
 
 export function reducerWithActionsContextPart<M>(ctxActions: M)
-    : <S, C1>(reducer: Reducer<S, C1>) => Reducer<S, UnionOrVoid<ActionMapToCtx<M>, Without<C1, ActionMapToMethodMap<M>>>> {
+    : <S, C1>(reducer: Reducer<S, C1>) => Reducer<S, ActionMapToCtx<M> & OmitPart<C1, ActionMapToMethodMap<M>>> {
     return mapReducerExecutorContext(mapExecutorEffectContext(wrapEffectWithPartialActionMap(ctxActions)));
 }
 
@@ -56,8 +65,8 @@ export function scopeReducer<S>(key: IndexType<S>) {
 }
 
 export function reducerWithContextPart<M>(ctx1: M)
-    : <S, C1>(reducer: Reducer<S, C1>) => Reducer<S, Without<C1, ActionMapToMethodMap<M>>> {
-    let effectWrapper = <S, C1>(effect: Effect<S, C1>) => (state: S, handler: ReducerHandler<S>, ctx: Without<C1, ActionMapToMethodMap<M>>) => {
+    : <S, C1>(reducer: Reducer<S, C1>) => Reducer<S, OmitPart<C1, ActionMapToMethodMap<M>>> {
+    let effectWrapper = <S, C1>(effect: Effect<S, C1>) => (state: S, handler: ReducerHandler<S>, ctx: OmitPart<C1, ActionMapToMethodMap<M>>) => {
         let newCtx = {
             ...ctx1, ...ctx
         };
@@ -70,7 +79,7 @@ export function reducerWithContextPart<M>(ctx1: M)
 }
 
 export function reducerWithContextBuilderPart<M, C0, C>(ctxBuilder: (ctxIn: C0) => C)
-    : <S>(reducer: Reducer<S, C>) => Reducer<S, Without<C0, C>> {
+    : <S>(reducer: Reducer<S, C>) => Reducer<S, OmitPart<C0, C>> {
     let effectWrapper = <S>(effect: Effect<S, C>) => (state: S, handler: ReducerHandler<S, C0>, ctx: C0) => {
         let newCtx = {
             ...ctxBuilder(ctx), ...ctx
@@ -91,7 +100,7 @@ export function reducerWithContextBuilder<C, C0>(ctxBuilder: (ctxIn: C0) => C): 
 }
 
 export function reducerWithContextBuilderPart2<M, C0, C, S>(ctxBuilder: ContextBuilder<C0, C, S>)
-    : (reducer: Reducer<S, C>) => Reducer<S, Without<C0, C>> {
+    : (reducer: Reducer<S, C>) => Reducer<S, OmitPart<C0, C>> {
     let effectWrapper = (effect: Effect<S, C>) => (state: S, handler: ReducerHandler<S, C0>, ctx: C0) => {
         let newCtx = {
             ...ctxBuilder(ctx, handler), ...ctx
