@@ -5,7 +5,7 @@ import {
 import {Counter, CounterState} from "./Counter";
 import {actionsWithListener, provideContext, scopeActions} from "../actions";
 import {handleActionMap} from "../handlers";
-import {contextWithActions} from "../effects";
+import {contextWithActions} from "../context";
 
 
 export type MultipleCountersState = {
