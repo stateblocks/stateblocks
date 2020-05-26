@@ -128,13 +128,6 @@ type AsActionMap<M> = { [K in keyof M]: AsActionMapItem<M[K]> }
 
 export type OmitPart<C1, C> = Exclude<keyof C1, keyof C> extends never ? {} : Omit<C1, keyof C>
 
-export type UnionOrVoid<A, B> =
-    B extends void ?
-        A :
-        A extends void ?
-            B :
-            A & B
-
 export function updateState<S, K extends IndexType<S>>(state: S, key: K, subState: StatePart<S, K>) {
     if (Array.isArray(state)) {
         if (subState !== state[key]) {
