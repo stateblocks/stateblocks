@@ -17,7 +17,6 @@ import {
     ReducerCreator,
     ReducerHandler,
     StatePart,
-    UnionOrVoid,
 } from "./core";
 import {
     _reducerWithContext,
@@ -84,10 +83,10 @@ export function actionsWithListener<M, C, S>(listener: Reducer<S, C>, actions: M
 export type ContextBuilder<C0, C1, S> = (ctxIn: C0, handler: ReducerHandler<S, C0>) => C1
 
 export type CtxBuilderToCtxUnion<CB, MC> = CB extends (ctxIn: infer C0) => infer C ?
-    UnionOrVoid<C0, OmitPart<MC, C>>
+    (C0 & OmitPart<MC, C>)
     :
     CB extends ContextBuilder<infer C0, infer C, infer S> ?
-        UnionOrVoid<C0, OmitPart<MC, C>>
+        (C0 & OmitPart<MC, C>)
         :
         OmitPart<MC, CB>
 
@@ -131,7 +130,7 @@ export function actionsWithContextPart<M, C>(ctx: C, actions: M)
 }
 
 export function actionsWithContextBuilderPart<M, C, C0>(ctxBuilder: (ctxParent: C0) => C, actions: M)
-    : ActionMapWithCtx<M, ActionMapToCtx<M> extends void ? C0 : UnionOrVoid<C0, OmitPart<ActionMapToCtx<M>, C>>> {
+    : ActionMapWithCtx<M, ActionMapToCtx<M> extends void ? C0 : (C0 & OmitPart<ActionMapToCtx<M>, C>)> {
     //TODO : si on implémente tout le context, le reducer n'est pas un Reducer<S, void>
     // @ts-ignore
     return mapActionsReducers(reducerWithContextBuilderPart(ctxBuilder), actions)

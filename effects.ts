@@ -6,7 +6,6 @@ import {
     IndexType, OmitPart,
     ReducerHandler,
     StatePart,
-    UnionOrVoid,
     updateState,
 } from "./core";
 import {contextWithActions} from "./context";
