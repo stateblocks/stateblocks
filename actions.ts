@@ -2,7 +2,9 @@ import {
     ActionMap,
     ActionMapToCtx,
     ActionMapToMethodMap,
-    ActionMapToState, ActionMapWithCtx, ActionMapWithCtxBuilder,
+    ActionMapToState,
+    ActionMapWithCtx,
+    ActionMapWithCtxBuilder,
     ActionMapWithReducer,
     ActionMapWithState,
     ContextToActionMap,
@@ -10,12 +12,12 @@ import {
     Executor,
     FunctionsContext,
     IndexType,
+    OmitPart,
     Reducer,
     ReducerCreator,
     ReducerHandler,
     StatePart,
     UnionOrVoid,
-    Without,
 } from "./core";
 import {
     _reducerWithContext,
@@ -23,7 +25,8 @@ import {
     reducerWithActionsContext,
     reducerWithActionsContextPart,
     reducerWithContextBuilder,
-    reducerWithContextBuilderPart, reducerWithContextBuilderPart2,
+    reducerWithContextBuilderPart,
+    reducerWithContextBuilderPart2,
     reducerWithContextPart,
     scopeReducer
 } from "./reducers";
@@ -81,12 +84,12 @@ export function actionsWithListener<M, C, S>(listener: Reducer<S, C>, actions: M
 export type ContextBuilder<C0, C1, S> = (ctxIn: C0, handler: ReducerHandler<S, C0>) => C1
 
 export type CtxBuilderToCtxUnion<CB, MC> = CB extends (ctxIn: infer C0) => infer C ?
-    UnionOrVoid<C0, Without<MC, C>>
+    UnionOrVoid<C0, OmitPart<MC, C>>
     :
     CB extends ContextBuilder<infer C0, infer C, infer S> ?
-        UnionOrVoid<C0, Without<MC, C>>
+        UnionOrVoid<C0, OmitPart<MC, C>>
         :
-        Without<MC, CB>
+        OmitPart<MC, CB>
 
 
 export function provideContext<CB, M>(ctxOrFunction: CB, actions: M):
@@ -121,21 +124,21 @@ export function actionsWithContextActions<M, C extends FunctionsContext>(ctxActi
 }
 
 export function actionsWithContextPart<M, C>(ctx: C, actions: M)
-    : ActionMapWithCtx<M, Without<ActionMapToCtx<M>, C>> {
+    : ActionMapWithCtx<M, OmitPart<ActionMapToCtx<M>, C>> {
     //TODO : si on implémente tout le context, le reducer n'est pas un Reducer<S, void>
     // @ts-ignore
     return mapActionsReducers(reducerWithContextPart(ctx), actions)
 }
 
 export function actionsWithContextBuilderPart<M, C, C0>(ctxBuilder: (ctxParent: C0) => C, actions: M)
-    : ActionMapWithCtx<M, ActionMapToCtx<M> extends void ? C0 : UnionOrVoid<C0, Without<ActionMapToCtx<M>, C>>> {
+    : ActionMapWithCtx<M, ActionMapToCtx<M> extends void ? C0 : UnionOrVoid<C0, OmitPart<ActionMapToCtx<M>, C>>> {
     //TODO : si on implémente tout le context, le reducer n'est pas un Reducer<S, void>
     // @ts-ignore
     return mapActionsReducers(reducerWithContextBuilderPart(ctxBuilder), actions)
 }
 
 export function actionsWithActionsContextPart<CM, M>(ctxActions: CM, actions: M)
-    : ActionMapWithCtx<M, Without<ActionMapToCtx<M>, ActionMapToMethodMap<CM>>> {
+    : ActionMapWithCtx<M, OmitPart<ActionMapToCtx<M>, ActionMapToMethodMap<CM>>> {
     // @ts-ignore
     return mapActionsReducers(reducerWithActionsContextPart(ctxActions), actions);
 }

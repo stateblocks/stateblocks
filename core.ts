@@ -126,8 +126,7 @@ type AsActionMapItem<T> = T extends ReducerCreator<infer A, infer S, infer C> ?
 
 type AsActionMap<M> = { [K in keyof M]: AsActionMapItem<M[K]> }
 
-
-export type Without<C1, C> = Exclude<keyof C1, keyof C> extends never ? {} : Omit<C1, keyof C>
+export type OmitPart<C1, C> = Exclude<keyof C1, keyof C> extends never ? {} : Omit<C1, keyof C>
 
 export type UnionOrVoid<A, B> =
     B extends void ?

@@ -3,12 +3,11 @@ import {
     ActionMapToCtx,
     ActionMapToMethodMap,
     Effect,
-    IndexType,
+    IndexType, OmitPart,
     ReducerHandler,
     StatePart,
     UnionOrVoid,
     updateState,
-    Without,
 } from "./core";
 import {contextWithActions} from "./context";
 
@@ -20,6 +19,7 @@ export function wrapEffectWithActionsMap<S, M>(actions: M): (effect: Effect<S, A
 }
 
 
+// export function wrapEffectWithPartialActionMap<M>(actions: M):  <S, C>(effect: Effect<S, C>) => Effect<S, UnionOrVoid<ActionMapToCtx<M>, Without<C, ActionMapToMethodMap<M>>>>  {
 export function wrapEffectWithPartialActionMap<M>(actions: M):  <S, C>(effect: Effect<S, C>) => Effect<S, ActionMapToCtx<M> & OmitPart<C, ActionMapToMethodMap<M>>>  {
     // @ts-ignore
     return mapEffectContext(contextWithActions(actions));
