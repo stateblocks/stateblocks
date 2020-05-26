@@ -20,12 +20,11 @@ import {
 } from "./core";
 import {
     _reducerWithContext,
-    _reducerWithWrappedEffect,
+    _mapReducerEffect,
     reducerWithActionsContext,
     reducerWithActionsContextPart,
-    reducerWithContextBuilder,
+    _mapReducerContext,
     reducerWithContextBuilderPart,
-    reducerWithContextBuilderPart2,
     reducerWithContextPart,
     scopeReducer
 } from "./reducers";
@@ -95,7 +94,7 @@ export function provideContext<CB, M>(ctxOrFunction: CB, actions: M):
     ActionMapWithCtxBuilder<M, CB> {
     if (typeof ctxOrFunction == "function") {
         // @ts-ignore
-        return mapActionsReducers(reducerWithContextBuilderPart2(ctxOrFunction), actions)
+        return mapActionsReducers(reducerWithContextBuilderPart(ctxOrFunction), actions)
     } else {
         // @ts-ignore
         return actionsWithContextPart(ctxOrFunction, actions)
@@ -104,7 +103,7 @@ export function provideContext<CB, M>(ctxOrFunction: CB, actions: M):
 
 
 //TODO : on ne vérifie pas que les actions prennent le bon contexte
-export function actionsWithContextValue<M>(ctx: ActionMapToCtx<M>, actions: M)
+export function actionsWithContextValue<M>(ctx: ActionMapToCtxIntersection<M>, actions: M)
     : ActionMapWithCtx<M, {}> {
     // @ts-ignore
     return mapActionsReducers(_reducerWithContext(ctx), actions)
@@ -113,7 +112,7 @@ export function actionsWithContextValue<M>(ctx: ActionMapToCtx<M>, actions: M)
 export function actionsWithContextBuilder<M, C, C0>(ctxBuilder: (ctxIn: C0) => C, actions: M)
     : ActionMapWithCtx<M, C0> {
     // @ts-ignore
-    return mapActionsReducers(reducerWithContextBuilder(ctxBuilder), actions)
+    return mapActionsReducers(_mapReducerContext(ctxBuilder), actions)
 }
 
 export function actionsWithContextActions<M, C extends FunctionsContext>(ctxAction: ContextToActionMap<C>, actions: M)
@@ -208,7 +207,7 @@ function scopeActionsWithEffectWrapper<S, C1, C2>(effectWrapper: (key: IndexType
         return (key: IndexType<S>) => {
             let reducerTransformer = (r: Reducer<StatePart<S, typeof key>, C2>) => {
                 let reducer: Reducer<S, C2> = scopeReducer<S>(key)(r);
-                return _reducerWithWrappedEffect(effectWrapper(key), reducer) as Reducer<S, C1>;
+                return _mapReducerEffect(effectWrapper(key), reducer) as Reducer<S, C1>;
             };
             // @ts-ignore
             return mapActionsReducers(reducerTransformer, actions) as ActionMapWithCtx<ActionMapWithState<M, S>, C1>;

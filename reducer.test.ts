@@ -1,5 +1,10 @@
 import {SampleStorage, sleep} from "./samples/utils";
-import {ActionMapToMethodMap, ActionMapWithCtx, Effect, Executor, Reducer,} from "./core";
+import {
+    ActionMapWithCtx,
+    Effect,
+    Executor,
+    Reducer,
+} from "./core";
 import {Store} from "./store";
 import {
     actionsWithActionsContextPart,
@@ -13,7 +18,7 @@ import {
     scopeActionsWithCtxBuilder
 } from "./actions";
 import {handleActionMap} from "./handlers";
-import {contextWithActions} from "./context";
+import {contextWithActionsPart} from "./context";
 
 
 test("simple actions with context", async () => {
@@ -261,9 +266,9 @@ test("complex actions with context universal", async () => {
          * This action map will web available in context.
          */
         const fooActionCtx = {
-            foo: () => (state: State, executor: Executor<State, Bar>) => {
+            foo: () => (state: State, executor: Executor<State, Bar & { extra: string }>) => {
                 foo();
-                // Ensure thar side effects in actions context are executed
+                // Ensure that side effects in actions context are executed
                 executor((state, handler, ctx) => {
                     ctx.bar()
                 })
@@ -281,14 +286,15 @@ test("complex actions with context universal", async () => {
         });
 
 
-        const actionsWithFoo: ActionMapWithCtx<typeof actions, Bar & Baz> = provideContext(contextWithActions(fooActionCtx), actions);
-        const actionsWithFooBaz: ActionMapWithCtx<typeof actions, Bar> = provideContext(bazCtxBuilder, actionsWithFoo);
-        const actionsWithFullContext: ActionMapWithCtx<typeof actions, {}> = provideContext(barCtx, actionsWithFooBaz);
+        const actionsWithFoo = provideContext(contextWithActionsPart(fooActionCtx), actions);
+        const actionsWithFooBaz = provideContext(bazCtxBuilder, actionsWithFoo);
+        const actionsWithFullContext = provideContext(barCtx, actionsWithFooBaz);
+
         return {actionsWithFullContext, foo, bar, baz}
     }
 
-
     let {actionsWithFullContext, bar, baz, foo} = createActions();
+
     let store = new Store(0);
     await store.update(actionsWithFullContext.test());
     expect(store.state).toBe(2);
@@ -327,16 +333,16 @@ test("types : actions with context universal", () => {
         }
     };
 
-    actionsWithContextBuilderPart(() => cImpl, actions)
+    provideContext(() => cImpl, actions)
         .increment()(0, null as Executor<number, A & B>)
 
     const contextActions = ({
         c: () => (state: number, exec: Executor<number, A & B>) => state
     })
-    actionsWithActionsContextPart(contextActions, actions)
+    provideContext(contextActions, actions)
         .increment()(0, null as Executor<number, A & B>)
 
-    const ctxBuilder = contextWithActions(contextActions);
+    const ctxBuilder = contextWithActionsPart(contextActions);
     provideContext(ctxBuilder, actions)
         .increment()(0, null as Executor<number, A & B>)
 

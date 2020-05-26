@@ -2,11 +2,8 @@ import {provideContext} from "./actions";
 import {
     ActionMapToCtxIntersection,
     ActionMapWithState,
-    Effect,
     Executor,
-    Reducer,
-    ReducerHandler,
-    ReducerWithContext
+    ReducerToCtx,
 } from "./core";
 import {excludeKey, hasKey} from "./typesChecks";
 
@@ -16,7 +13,7 @@ type B = { b: string }
 type C = { c: string }
 type D = { d: string }
 
-type ReducerToCtx<R> = R extends ReducerWithContext<infer S, infer C> ? C : void
+
 
 function getCtx<R>(r: R): ReducerToCtx<R> {
     return null;

@@ -1,6 +1,6 @@
 import {handleActionMap, mapHandlerContext, mapHandlerState} from "./handlers";
 import {
-    ActionMapToCtx,
+    ActionMapToCtx, ActionMapToCtxIntersection,
     ActionMapToMethodMap,
     Effect,
     IndexType, OmitPart,
@@ -8,20 +8,15 @@ import {
     StatePart,
     updateState,
 } from "./core";
-import {contextWithActions} from "./context";
+import {contextWithActions, contextWithActionsPart} from "./context";
 
-export function wrapEffectWithActionsMap<S, M>(actions: M): (effect: Effect<S, ActionMapToMethodMap<M>>) => Effect<S> {
-    let ctxMapper = <S, C1>(ctx: {}, handler: ReducerHandler<S>): ActionMapToMethodMap<M> => {
-        return handleActionMap(handler, actions);
-    }
-    return mapEffectContext(ctxMapper);
+export function wrapEffectWithActionsMap<S, M>(actions: M): (effect: Effect<S, ActionMapToMethodMap<M>>) => Effect<S, ActionMapToCtxIntersection<M>> {
+    return mapEffectContext(contextWithActions(actions));
 }
 
 
-// export function wrapEffectWithPartialActionMap<M>(actions: M):  <S, C>(effect: Effect<S, C>) => Effect<S, UnionOrVoid<ActionMapToCtx<M>, Without<C, ActionMapToMethodMap<M>>>>  {
-export function wrapEffectWithPartialActionMap<M>(actions: M):  <S, C>(effect: Effect<S, C>) => Effect<S, ActionMapToCtx<M> & OmitPart<C, ActionMapToMethodMap<M>>>  {
-    // @ts-ignore
-    return mapEffectContext(contextWithActions(actions));
+export function wrapEffectWithPartialActionMap<M>(actions: M):  <S, C>(effect: Effect<S, C>) => Effect<S, ActionMapToCtxIntersection<M> & OmitPart<C, ActionMapToMethodMap<M>>>  {
+    return mapEffectContext(contextWithActionsPart(actions)) as any;
 }
 
 

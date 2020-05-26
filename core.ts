@@ -39,6 +39,7 @@ export type StatePart<S, K extends IndexType<S>> = S extends Array<infer T> ? T 
 
 export type IndexType<S> = S extends any[] ? number : keyof S;
 
+export type ReducerToCtx<R> = R extends ReducerWithContext<infer S, infer C> ? C : void
 
 type WithoutContext<R> = R extends ReducerCreator<infer A, infer S, infer C> ? ReducerCreator<A, S> : never;
 
@@ -72,7 +73,9 @@ type ActionsMapToCtxMap<M> = {
                     never
 }
 
-export type ActionMapToCtxIntersection<M> = UnionToIntersection<ValuesTypes<ActionsMapToCtxMap<M>>>
+type OrEmpty<T> = T extends {} ? T : {}
+
+export type ActionMapToCtxIntersection<M> = OrEmpty<UnionToIntersection<ValuesTypes<ActionsMapToCtxMap<M>>>>
 
 export type ActionMapToCtx<M> = M extends ActionMap<infer S, infer C> ? C : never
 
@@ -127,6 +130,8 @@ type AsActionMapItem<T> = T extends ReducerCreator<infer A, infer S, infer C> ?
 type AsActionMap<M> = { [K in keyof M]: AsActionMapItem<M[K]> }
 
 export type OmitPart<C1, C> = Exclude<keyof C1, keyof C> extends never ? {} : Omit<C1, keyof C>
+
+export type Merge<T0, T1> = OmitPart<T0, T1> & T1
 
 export function updateState<S, K extends IndexType<S>>(state: S, key: K, subState: StatePart<S, K>) {
     if (Array.isArray(state)) {
