@@ -2,6 +2,8 @@
 
 > Javascript/Typescript functional state container with composability and side effects management.
 
+!> Stateblocks is a work in progress
+
 StateBlocks is inspired by [The Elm Architecture](https://guide.elm-lang.org/architecture/). 
 It borrows some naming convention from [Redux](https://redux.js.org/).
 
@@ -13,16 +15,23 @@ It borrows some naming convention from [Redux](https://redux.js.org/).
 - Management of impure or statefull code through context
 - Invocation of actions in UI components in a natural way.  
 - Strongly typed
+- Available as [Redux Middleware](https://redux.js.org/advanced/middleware) to leverage existing redux ecosystem
 
 ## Getting started
+
+### Installation
+
+```
+npm install stateblocks
+```
+
+### Creating reducers
 
 State is updated with **reducers**. 
 A reducer is a function returning a new state computed from the current state.
 Reducers should be pure functions without side effects. Side effects management is explained later.
 
 Reducers are functions with signature : `(state) => state`
-
-### Creating reducers
 
 Reducers are created by **Actions**. An action take some arguments and returns a reducer.
 
