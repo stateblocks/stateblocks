@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "noImplicitAny": true,
+    "module": "esnext",
+    "target": "es3",
+    "declaration": true,
+    "jsx": "react",
+
+    "outDir": "./dist/",
+    "paths": {
+      "*": ["../modules/*", "./node_modules/*", "./node_modules/@types/*", "./libs/*"]
+    },
+    "baseUrl": "./src",
+    "moduleResolution":"node",
+    "allowJs": true,
+    "downlevelIteration":true,
+    "sourceMap": true,
+    "lib": ["es2015", "dom"],
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "./index.ts",
+    "./node_modules/typescript/lib/lib.es6.d.ts"
+  ],
+  "exclude": [
+    "**/quickstart.test.js"
+  ]
+}
