@@ -10,6 +10,7 @@ TODO
 - handleActionMap
 - composition du state au meme niveau
 - Promise in effects and handlers and update
+- Redux view binding doc and samples
 
 
 
