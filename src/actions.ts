@@ -295,7 +295,7 @@ export function chainActions<S, C, M1 extends ActionMap<S, C>, M2 extends Action
  * definition.
  */
 export function actionsOf<S, C>() {
-    return <M extends ActionMap<S, C>>(actions: M): ActionMapWithState<ActionMapWithCtx<M, C>, S> => {
+    return <M extends ActionMap<S, C>>(actions: M): M => {
         return actions as any;
     }
 }
