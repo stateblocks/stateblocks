@@ -30,13 +30,13 @@ import {
 } from "./reducers";
 import {assertFunction, assertObject} from "./asserts";
 import {handlerWithContext} from "./handlers";
-import {mapValues as lodashMapValues} from "lodash-es";
+import {mapValues} from "./utils";
 
 
 function mapActionsReducers<T, U, A>(reducerTransformer: (reducer: T) => U, actions: A): ActionMapWithReducer<A, T, U> {
     if (typeof actions !== "function") {
         // @ts-ignore
-        return lodashMapValues(actions as Object, item => mapActionsReducers(reducerTransformer, item));
+        return mapValues(actions as Object, item => mapActionsReducers(reducerTransformer, item));
     } else {
         // @ts-ignore
         return (...args: any) => {
@@ -47,7 +47,7 @@ function mapActionsReducers<T, U, A>(reducerTransformer: (reducer: T) => U, acti
             } else {
                 // mapItemOutput is an action map
                 // @ts-ignore
-                return lodashMapValues(mapItemOutput, item => mapActionsReducers(reducerTransformer, item));
+                return mapValues(mapItemOutput, item => mapActionsReducers(reducerTransformer, item));
             }
         };
     }
@@ -245,7 +245,7 @@ export type ActionMapUnion<A, B> =
 //TODO autoriser les action map creator
 export function chainActions<S, C, M1 extends ActionMap<S, C>, M2 extends ActionMap<S, C>>(actions1: M1, actions2: M2): ActionMapUnion<M1, M2> {
     let newVar = {
-        ...actions2, ...lodashMapValues(actions1, (mapItem: M1[keyof M1], key: string) => {
+        ...actions2, ...mapValues(actions1, (mapItem, key: string) => {
             //TODO : gérer si c'est un objet et map une fonction
             if (typeof mapItem !== "function") {
                 assertObject(mapItem);

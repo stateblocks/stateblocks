@@ -3,13 +3,12 @@ import {ActionMapToMethodMap, Executor, IndexType, Reducer, ReducerCreator, Redu
 import {memoize2, memoizeN} from "./memo";
 import {mapExecutorEffectContext} from "./executors";
 import {mapEffectContext} from "./effects";
-import {mapValues as lodashMapValues} from "lodash-es";
+import {mapValues} from "./utils";
 
 
 function mapActionsValues<T, U, A>(fn: (arg: T) => U, actions: A): { [key in keyof A]: U } {
-    // TODO : virer lodash
     // @ts-ignore
-    return lodashMapValues(actions, fn);
+    return mapValues(actions, fn);
 }
 
 
@@ -22,8 +21,8 @@ export function scopeHandler<S, T, K extends IndexType<S>, C>(key: K, handler: R
 //TODO : ne devrait pas pouvoir etre appelé avec un handler qui ne correspond pas.
 export function handleActionMapInt<M, S, C>(handler: ReducerHandler<S, C>, actionMap: M): ActionMapToMethodMap<M> {
     return mapActionsValues((action: any) => {
-        let memoAction = memoizeN(action);
         if (typeof action === "function") {
+            let memoAction = memoizeN(action);
             return ((...args: any[]) => {
                 const reducerOrActionMap = memoAction(...args);
                 if (typeof reducerOrActionMap === "function") {
