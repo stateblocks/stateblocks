@@ -1,5 +1,5 @@
-import {createStore} from "../store";
-import {provideContext, scopeActions, scopeActionsWithCtxBuilder} from "../actions";
+import {createStore} from "../src/store";
+import {provideContext, scopeActions, scopeActionsWithCtxBuilder} from "../src/actions";
 
 test("quickstart", async () => {
 
