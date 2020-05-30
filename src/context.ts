@@ -22,7 +22,7 @@ export function contextWithActions<M>(actions: M) {
 
 export function extendContext<C0, C1, S>(ctxBuilder: ContextBuilder<C0, C1, S>):
     <C extends C0>(ctxIn: C, handler: ReducerHandler<S, C>) => Merge<C, C1> {
-    return <C extends C0>(ctxIn: C, handler: ReducerHandler<S, C0>) => ({
+    return <C extends C0>(ctxIn: C, handler: ReducerHandler<S, C>) => ({
         ...ctxIn,
         ...ctxBuilder(ctxIn, handler),
     } as unknown as Merge<C, C1>)
