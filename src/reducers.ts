@@ -47,6 +47,7 @@ export function scopeReducer<S>(key: IndexType<S>) {
 }
 
 export function reducerWithContextPart<C>(ctx1: C): <S, C1>(reducer: Reducer<S, C1>) => Reducer<S, OmitPart<C1, C>> {
+    // @ts-ignore
     return <S, C1>(reducer: Reducer<S, C1>) => _mapReducerContext(extendContextValue(ctx1))(reducer as any);
 }
 

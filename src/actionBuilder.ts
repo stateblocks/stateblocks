@@ -3,8 +3,8 @@
  */
 
 import {
-    ActionMap,
-    Executor,
+    ActionMap, ActionMapToCtx, ActionMapWithCtx,
+    Executor, OmitPart,
     ReducerCreator
 } from "./core";
 import {actionsWithContextPart, actionsWithContextValue} from "./actions";
@@ -18,12 +18,12 @@ class ActionsModifier<S, C extends {}, M extends ActionMap<S, C>> {
         this.actionsMap = actionsMap;
     }
 
-    withContext(ctx: C) {
+    withContext(ctx: C):ActionMapWithCtx<M, {}> {
         // @ts-ignore
         return actionsWithContextValue(ctx, this.actionsMap)
     }
 
-    withContextPart<C1>(ctx: C1) {
+    withContextPart<C1>(ctx: C1):ActionMapWithCtx<M, OmitPart<ActionMapToCtx<M>, C1>> {
         return actionsWithContextPart(ctx, this.actionsMap)
     }
 }

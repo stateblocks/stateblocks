@@ -64,7 +64,7 @@ export type ActionMapToMethodMap<M> = { [K in keyof M]: ActionToMethod<M[K]> }
 
 type ValuesTypes<M> = M[keyof M]
 
-type ActionsMapToCtxMap<M> = {
+export type ActionsMapToCtxMap<M> = {
     [P in keyof M]:
     M[P] extends ReducerCreatorSimple<infer A, infer S> ? {} :
         M[P] extends ReducerCreator<infer A, infer S, infer C> ? C :
