@@ -1,12 +1,12 @@
 import {mapReducerExecutorContext, mapReducerState, scopeReducer} from "./reducers";
 import {ActionMapToMethodMap, Executor, IndexType, Reducer, ReducerCreator, ReducerHandler, StatePart} from "./core";
-import {memoize2, memoizeN} from "./memo";
+import {memoize2, memoizeVarArgs} from "./memo";
 import {mapExecutorEffectContext} from "./executors";
 import {mapEffectContext} from "./effects";
 import {mapValues} from "./utils";
 
 
-function mapActionsValues<T, U, A>(fn: (arg: T) => U, actions: A): { [key in keyof A]: U } {
+function mapActionsValues<T, U, A>(fn: (arg: T, key:string) => U, actions: A): { [key in keyof A]: U } {
     // @ts-ignore
     return mapValues(actions, fn);
 }
@@ -20,24 +20,29 @@ export function scopeHandler<S, T, K extends IndexType<S>, C>(key: K, handler: R
 
 //TODO : ne devrait pas pouvoir etre appelé avec un handler qui ne correspond pas.
 export function handleActionMapInt<M, S, C>(handler: ReducerHandler<S, C>, actionMap: M): ActionMapToMethodMap<M> {
-    return mapActionsValues((action: any) => {
+    return mapActionsValues((action: any, key:string) => {
         if (typeof action === "function") {
-            let memoAction = memoizeN(action);
+            // Map value is a function. It could be a reducer creator, or an action map builder.
+            let memoAction = memoizeVarArgs(action);
             return ((...args: any[]) => {
                 const reducerOrActionMap = memoAction(...args);
                 if (typeof reducerOrActionMap === "function") {
-                    memoAction = action; // we don't want to memoize reducer creators
+                    // we don't want to memoize reducer creators so we replace memoized function with the original
+                    // for future calls
+                    memoAction = action;
                     return handler(reducerOrActionMap)
                 } else {
                     return handleActionMap(handler, reducerOrActionMap)
                 }
             })
         } else {
+            // Map value is an object, i.e, an action map.
             return handleActionMap(handler, action)
         }
     }, actionMap) as ActionMapToMethodMap<M>;
 }
 
+// TODO : est-ce qu'on veut memoizer ?
 export const handleActionMap: typeof handleActionMapInt = memoize2(handleActionMapInt);
 
 export function handleAction<A extends any[], S, I>(handler: ReducerHandler<S, I>, reducerCreator: ReducerCreator<A, S, I>): (...args: A) => Promise<void> {
