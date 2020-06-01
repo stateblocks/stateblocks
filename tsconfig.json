@@ -8,7 +8,6 @@
 
     "outDir": "./dist/",
     "paths": {
-      "*": ["../modules/*", "./node_modules/*", "./node_modules/@types/*", "./libs/*"]
     },
     "baseUrl": "./src",
     "moduleResolution":"node",
@@ -20,8 +19,7 @@
     "skipLibCheck": true
   },
   "include": [
-    "./index.ts",
-    "./node_modules/typescript/lib/lib.es6.d.ts"
+    "src/index.ts"
   ],
   "exclude": [
     "**/quickstart.test.js"
