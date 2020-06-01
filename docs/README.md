@@ -78,16 +78,18 @@ In the previous example, we used the browser API to perform side effects
 (`Math.random` and `console.log`). In real real-world applications, you will
 certainly rely on network calls or data I/O in your side effects.
 
-Side effects are allowed to perform any imperative, statefull operations. 
-To avoid relying on global variables, side effects can depend on context
-data. Context can be used to provide effects with statefull objects like
-data storage APIs or any impure code. Let's say we have a `dataStorage` instance
+Side effects are allowed to perform any imperative, statefull operations and can depend on **context
+data**. Context can be used to provide effects with statefull objects like
+data storage APIs or any impure code. 
+Context can be seen as the impure and mutable state of your application.
+Effects are used to perform manipulations
+involving context without loosing reducers purity.
+
+Let's say we have a `dataStorage` instance
 available for use in our app with API `{saveValue: (value) => void, loadValue: () = value, ...}` 
 
 [filename](quickstart.test.js ':include :type=code :fragment=effect-context')
 
-> Context can be seen as the impure and mutable state of your application. Effects are used to perform manipulations
-involving context without loosing reducers purity.
 
 In bigger applications, you would typically provide context values in your application entry point.
 
