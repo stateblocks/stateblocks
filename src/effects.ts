@@ -1,6 +1,6 @@
-import {handleActionMap, mapHandlerContext, mapHandlerState} from "./handlers";
+import {mapHandlerContext, mapHandlerState} from "./handlers";
 import {
-    ActionMapToCtx, ActionMapToCtxIntersection,
+    ActionMapToCtxIntersection,
     ActionMapToMethodMap,
     Effect,
     IndexType, OmitPart,
