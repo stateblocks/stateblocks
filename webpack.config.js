@@ -1,8 +1,8 @@
 const path = require('path');
 const webpack = require('webpack');
 const devMode = process.env.WEBPACK_MODE === 'production';
-
-
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+const CleanWebpackPlugin = require('clean-webpack-plugin');
 
 module.exports = {
 
@@ -15,25 +15,12 @@ module.exports = {
         libraryTarget: "umd"
     },
 
-    // output: {
-    //     filename: '[name].[contenthash].js',
-    //     chunkFilename: '[name].[chunkhash].js', //pattern des chunks chargés en asynchrone avec import("something")
-    //     // path: outputPath
-    // },
+    plugins: [
+        new CleanWebpackPlugin(),
+        // new BundleAnalyzerPlugin()
+    ],
 
-
-    // plugins: [
-    //     // new CleanWebpackPlugin([outputPath]),
-    //     // new HtmlWebpackPlugin({
-    //     //     template: 'src/index.html'
-    //     // }),
-    //     new webpack.HashedModuleIdsPlugin(), //https://webpack.js.org/guides/caching/#module-identifiers
-    //
-    //
-    // ],
-    // // Enable sourcemaps for debugging webpack's output.
     // devtool: "source-map",
-
 
     resolve: {
         // Add '.ts' and '.tsx' as resolvable extensions.
@@ -44,18 +31,22 @@ module.exports = {
     module: {
         rules: [
             // All files with a '.ts' or '.tsx' extension will be handled by 'awesome-typescript-loader'.
-            {test: /\.tsx?$/, loader: "awesome-typescript-loader"},
-
+            // {test: /\.tsx?$/, loader: "awesome-typescript-loader"},
+            {
+                test: /\.tsx?$/,
+                use: 'ts-loader',
+                exclude: /node_modules/,
+            },
             // All output '.js' files will have any sourcemaps re-processed by 'source-map-loader'.
             // {enforce: "pre", test: /\.js$/, loader: "source-map-loader"},
-
 
         ],
 
     },
 
 
-    // optimization: {
+    optimization:{
+    //     minimize: false
     //     runtimeChunk: 'single',
     //     splitChunks: {
     //         cacheGroups: {
@@ -72,7 +63,7 @@ module.exports = {
     //             }
     //         }
     //     }
-    // },
+    },
 
 
 
