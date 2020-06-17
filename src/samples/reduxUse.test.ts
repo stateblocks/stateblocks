@@ -83,10 +83,13 @@ test("use in sub-reducer", async () => {
 
     store.dispatch({type: "INCREMENT"})
 
+    expect(store.getState()).toEqual({top:1, bottom:0})
+
     const rootActions = (actions);
 
     store.dispatch(applyReducer(rootActions.increment(), "STATEBLOCKS_ACTION"))
 
+    expect(store.getState()).toEqual({top:1, bottom:1})
 })
 
 test("use with other middlewares", async () => {
