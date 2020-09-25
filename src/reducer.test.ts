@@ -414,9 +414,7 @@ test("add context to scoped action", async () => {
 
     let actions = {scope: scopeActions<{ scope: number }>("scope")(subActions)};
 
-    let mockCallback = jest.fn(arg => {
-        console.log(arg)
-    });
+    let mockCallback = jest.fn();
 
     let counterContext = {
         foo: mockCallback
@@ -660,9 +658,7 @@ test("use context builder in scoped action", async () => {
         }
     };
 
-    let mockCallback = jest.fn(arg => {
-        console.log(arg)
-    });
+    let mockCallback = jest.fn();
 
     var actionsWithContext1 = scopeActionsWithCtxBuilder<number[], {}, ContextType>((key, state, handler, ctx) => ({
         foo: (arg: string) => {
@@ -702,9 +698,7 @@ test("use context builder in scoped action 2", async () => {
         }
     };
 
-    let mockCallback = jest.fn(arg => {
-        console.log(arg)
-    });
+    let mockCallback = jest.fn();
 
     var actionsWithContext1 = scopeActions<number[]>()(subActions, (key, state, handler, ctx) => ({
         foo: (arg: string) => {
@@ -787,9 +781,7 @@ test("scope actions with action in effect", async () => {
 //TODO : choose and fix
 xtest("don't fire state update in synchronous effect", async () => {
     let store = new Store(0);
-    const listener = jest.fn((state: number) => {
-        console.log("state update fired", state);
-    });
+    const listener = jest.fn();
     store.onChange(listener);
 
     await store.update((state, executor) => {
@@ -831,12 +823,11 @@ test("await effects that return promises", async () => {
 
 test("effects in effects should throw", async () => {
     let store = new Store(0);
+    let forbiddenEffect = jest.fn();
     let promise = store.update((state, effects) => {
         effects(async () => {
             await sleep(100);
-            effects(() => {
-                console.log("executing effect in effect");
-            });
+            effects(forbiddenEffect);
         });
         return state + 1;
     });
@@ -846,6 +837,7 @@ test("effects in effects should throw", async () => {
         error = e;
     });
     expect(error).toBeDefined()
+    expect(forbiddenEffect.mock.calls.length).toBe(0);
 });
 
 test("await scoped effects", async () => {
