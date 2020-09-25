@@ -150,7 +150,7 @@ export function scopeActions<S>(): <M, C1, C2>(actions: M, ctxBuilder?: ScopedCo
     => (key: IndexType<S>) => typeof ctxBuilder extends void ? ActionMapWithState<M, S> : ActionMapWithCtx<ActionMapWithState<M, S>, C1>
 export function scopeActions<S>(key: IndexType<S>): <M>(actions: M) => ActionMapWithState<M, S>
 export function scopeActions<S>(key?: any): any {
-    if (key != null) {
+    if (arguments.length > 0) {
         let k = key as IndexType<S>;
         // @ts-ignore
         return <M>(actions: M) => mapActionsReducers(scopeReducer<S>(k), actions) as ActionMapWithState<M, S>;
