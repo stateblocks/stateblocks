@@ -20,7 +20,14 @@ export class Store<S> {
      */
     count = 0;
 
-    private inEffect = 0;
+    private inSynchronousEffect = 0;
+
+    /**
+     * If true, triggers state change events provoked by synchronous effects.
+     * If false, triggers state change only when synchronous effects have finished. State changed provoked by
+     * asynchronous effects are still triggered.
+     */
+    triggerChangesInSynchronousEffects = false;
 
     logUpdates = false;
 
@@ -37,7 +44,7 @@ export class Store<S> {
         this.update = this.update.bind(this)
     }
 
-    async update(action: Reducer<S>): Promise<void> {
+    async update(action: Reducer<S>): Promise<any> {
         let effects: Effect<S>[] = [];
         let reducerRunning = true;
         let newState = action(this.state, (effect: Effect<S>) => {
@@ -63,21 +70,25 @@ export class Store<S> {
         let effectPromises = [];
         if (effects.length) {
             for (let effect of effects) {
-                this.inEffect++;
-                let effectPromise = effect(this.state, this.update, voidContext);
-                effectPromises.push(effectPromise);
-                this.inEffect--;
+                this.inSynchronousEffect++;
+                try {
+                    let effectPromise = effect(this.state, this.update, voidContext);
+                    effectPromises.push(effectPromise);
+                } catch (e) {
+                    effectPromises.push(Promise.reject(e))
+                }
+                this.inSynchronousEffect--;
             }
         }
-        if (stateChanged) {
-            // if (stateChanged && this.inEffect == 0) {
+
+        if (stateChanged && (this.triggerChangesInSynchronousEffects || this.inSynchronousEffect == 0)) {
             this.count++;
             this.logUpdates && console.log("new state : ", this.count, this.state);
             if (this.listener) {
                 this.listener(this.state);
             }
         }
-        await Promise.all(effectPromises);
+        return Promise.all(effectPromises);
     }
 
     onChange(listener: (state: S) => void) {
