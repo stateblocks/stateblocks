@@ -2,6 +2,10 @@ import {isEqual} from "lodash-es";
 
 export function explainDiff<T>(a: T, b: T, path: any[] = []) {
 
+    if(a == b){
+        return;
+    }
+
     if (typeof a != typeof b) {
         console.log(path.join(".") + " types different");
         return;
@@ -16,6 +20,10 @@ export function explainDiff<T>(a: T, b: T, path: any[] = []) {
         if (a.length != (b as unknown as any[]).length) {
             console.log(path.join(".") + " different array size");
             return;
+        } else {
+            if (a.length == 0 && (b as unknown as any[]).length == 0) {
+                console.log(path.join(".") + " empty array");
+            }
         }
     }
     for (let key in a) {
@@ -23,18 +31,31 @@ export function explainDiff<T>(a: T, b: T, path: any[] = []) {
             const subPath = [...path, key];
             console.log(subPath.join(".") + " is different");
             explainDiff(a[key], b[key], subPath);
+            return;
         }
     }
+    for(let key in b){
+        if(!(key in a)){
+            const subPath = [...path, key];
+            console.log(subPath.join(".") + " is absent in object a");
+            return;
+        }
+    }
+
+    console.warn(path.join(".") + " are equal objects but not the same reference");
+
 
 }
 
-export function checkChanged<T>(oldState: T, newState: T): T {
+export function checkChanged<T>(oldState: T, newState: T): boolean {
     if (oldState !== newState) {
         if (isEqual(oldState, newState)) {
             console.warn("objects are different but content is equal");
-            return oldState;
+            explainDiff(oldState, newState);
+            return true;
         } else {
-            return newState;
+            return true;
         }
     }
+    return false;
 }
