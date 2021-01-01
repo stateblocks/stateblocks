@@ -44,7 +44,7 @@ export class Store<S> {
         this.update = this.update.bind(this)
     }
 
-    async update(action: Reducer<S>): Promise<any> {
+    async update(action: Reducer<S>): Promise<void> {
         let effects: Effect<S>[] = [];
         let reducerRunning = true;
         let newState = action(this.state, (effect: Effect<S>) => {
@@ -88,7 +88,7 @@ export class Store<S> {
                 this.listener(this.state);
             }
         }
-        return Promise.all(effectPromises);
+        return Promise.all(effectPromises).then(() => {});
     }
 
     onChange(listener: (state: S) => void) {
